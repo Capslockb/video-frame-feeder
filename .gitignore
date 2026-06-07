@@ -1,0 +1,5 @@
+__pycache__/
+*.pyc
+.env
+_test_marker.txt
+test_*.py

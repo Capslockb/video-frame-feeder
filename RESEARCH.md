@@ -206,6 +206,13 @@ Add to `_connect_model()` setup payload:
 ```
 This cuts tokens per frame from ~258 to ~100 (60% savings).
 
+> ❌ **CORRECTION (2026-06-07):** This field was tested against the live API and
+> **rejected with WS 1007** (`Unknown name "mediaResolution" at 'setup': Cannot find field.`)
+> on all current Gemini Live models (3.1-flash-live-preview, 2.5-flash-native-audio-preview-*).
+> It has been **removed** from the bridge setup payload. Frame-size cost is controlled
+> at the bridge level (1 fps cap + 512 KB max + audio-gating). See bridge.py line 3706
+> comment and CHANGELOG v0.2.6 for details.
+
 ### 3. Add Turn Coverage Override
 Ensure `turnCoverage` is `TURN_INCLUDES_ONLY_ACTIVITY` to avoid billing for silent video-only turns:
 ```json
@@ -230,6 +237,10 @@ Current default is `VIDEO_ENABLED=true`. Consider defaulting to `false` and requ
 
 ## Part 6: Implementation Scaffold
 
+> **Status (2026-06-07):** This section was the original research proposal. Items below
+> are annotated with what actually shipped vs what was rejected or modified. The scaffold
+> is preserved as a historical reference.
+
 ### Files to Create/Modify
 
 #### 1. `bridge.py` — Add mediaResolution + turnCoverage (Lines 462–510)
@@ -247,6 +258,9 @@ Modify `_connect_model()` setup payload to include:
 }
 ```
 
+> ❌ `mediaResolution` was **removed** — rejected WS 1007 by all current models.
+> ✅ `turnCoverage: TURN_INCLUDES_ONLY_ACTIVITY` was **already present** since v0.1.0.
+
 #### 2. `bridge.py` — Add Video Budget Gating (Line 392)
 ```python
 VIDEO_BUDGET_TOKENS = int(os.getenv("DISCORD_VOICE_LIVE_VIDEO_BUDGET_TOKENS", "0"))  # 0 = unlimited
@@ -255,6 +269,9 @@ VIDEO_BUDGET_TOKENS = int(os.getenv("DISCORD_VOICE_LIVE_VIDEO_BUDGET_TOKENS", "0
 if VIDEO_BUDGET_TOKENS > 0 and self._video_tokens_used >= VIDEO_BUDGET_TOKENS:
     return {"accepted": False, "reason": "budget_exhausted"}
 ```
+
+> ❌ **Not implemented.** Unnecessary — feeder-side content filtering (aHash)
+> already prevents token waste from static frames.
 
 #### 3. `__init__.py` — Add Voice State Update Handler
 ```python
@@ -268,6 +285,11 @@ async def on_voice_state_update(member, before, after):
     if after.self_video and not before.self_video:
         await bridge._gemini.send_text("I notice someone turned on their camera. I can't see the video feed, but I'm listening.")
 ```
+
+> ❌ **Not implemented in this form.** The user-presence watchdog replaces this —
+> it tracks whether the user is in the channel via periodic checks, not
+> `on_voice_state_update` events. The system prompt already handles the
+> "I know you're sharing" messaging.
 
 #### 4. New Script: `video-frame-feeder.py`
 External utility that captures screen and POSTs to `/frame`:
@@ -303,6 +325,11 @@ if __name__ == "__main__":
     main()
 ```
 
+> ✅ **v0.2 shipped** at `~/.hermes/voice-video-research/video-frame-feeder.py`.
+> The shipped version adds: content-aware filtering (8×8 aHash), thumbnail
+> fallback, `--min-change`, `--stddev-min`, `--no-content-filter`, `--source-label`.
+> See Part 7 above and repo `Capslockb/video-frame-feeder`.
+
 #### 5. New Command: `/voice-live-frame`
 Allow users to manually attach an image that gets forwarded:
 ```python
@@ -318,21 +345,39 @@ async def voice_live_frame(ctx, attachment: discord.Attachment):
     await ctx.send(f"Frame: {result}")
 ```
 
+> ✅ **Shipped.** Registered as Hermes tool `voice_live_frame` in `__init__.py`.
+> Uses HTTP POST to the control API rather than a Discord native command.
+> Fetches the image from URL, not attachment.
+
 ---
 
 ## Conclusion
 
 **Discord bots cannot receive video. This is a platform limitation, not a bug.**
 
-The practical path forward:
-1. ✅ Keep the existing `feed_video_frame()` infrastructure — it's solid and wallet-aware
-2. ✅ Add `mediaResolution: LOW` and `turnCoverage: TURN_INCLUDES_ONLY_ACTIVITY` to setup
-3. ✅ Detect stream/camera state changes via `on_voice_state_update` and inform Gemini verbally
-4. 🛠️ Build external frame feeder for users who want to pipe video in manually
-5. 🛠️ Add `/voice-live-frame` command for manual image injection
-6. 🛠️ Consider defaulting `VIDEO_ENABLED=false` until user opts in
+### What shipped (v0.2.8)
 
-This gives users awareness of video activity without pretending we can see it natively, while keeping the door open for external video feeding via the already-built `/frame` HTTP endpoint.
+| Item | Status | Notes |
+|---|---|---|
+| External frame feeder (`video-frame-feeder.py`) | ✅ **v0.2 shipped** | Content-aware filtering (aHash + Hamming), thumbnail fallback, CLI flags |
+| `/voice-live-frame` command | ✅ **shipped** | Sends attached images to Gemini via `feed_video_frame()` |
+| `feed_video_frame()` gating | ✅ **shipped** | 1fps cap, 512KB max, audio-gated, MIME-validated, `source` param |
+| `turnCoverage: TURN_INCLUDES_ONLY_ACTIVITY` | ✅ **shipped** | In setup payload since v0.1.0 |
+| `mediaResolution: LOW` | ❌ **REMOVED** | Causes WS 1007 on all current Gemini Live models |
+| `VIDEO_ENABLED=false` default | ❌ **not changed** | Default remains `true` — use `--no-content-filter` on feeder instead |
+| Video budget cap | ❌ **not implemented** | Unnecessary — content filtering already prevents waste |
+| User-presence gate | ✅ **shipped** | Pre-start check + runtime watchdog (1s response) |
+| First-turn mute (audioStreamEnd) | ✅ **shipped** | Suppresses model's autonomous "I see your screen" hallucination |
+| Webhook announce on video init | ✅ **shipped** | `bridge.video` event class, `emit_video_initialized()` |
+
+### Key lessons
+
+- **`mediaResolution` doesn't work on current Gemini Live models** despite being in the docs. Don't ship speculative config fields without API verification.
+- **External frame feeder + content filtering** is the right architecture for Discord video workaround — the bridge accepts frames, the feeder decides which frames are worth sending.
+- **Perceptual hashing on 8×8 thumbnails** is fast (<100ms per tick) and catches static-content dedup, but stddev on 64 pixels is too coarse for default filtering.
+- **Don't silently skip frames on pipe failure.** Always fall back to unfiltered send.
+- **The model will hallucinate "I see your screen"** if the system prompt tells it it has live video sight. Make it strictly conditional.
+- **User-presence gate + first-turn mute** prevent the two biggest token-waste cases: running unattended and first-turn hallucinations.
 
 ---
 
