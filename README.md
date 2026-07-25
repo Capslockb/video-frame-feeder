@@ -118,6 +118,10 @@ This tool captures visible screen content and transmits it to the configured end
 - do not expose an unauthenticated `/frame` endpoint publicly;
 - verify the selected display, region, or window before continuous capture.
 
+## License status
+
+This repository does not currently declare a software license. Do not assume permission to copy, modify, or redistribute the code until the owner adds an explicit license. The pending owner decision is tracked in [Issue #2](https://github.com/Capslockb/video-frame-feeder/issues/2).
+
 ## Behavior and limitations
 
 - This utility does not receive Discord camera or screenshare streams through the Discord bot API. It captures what is visible on the host operating system.
