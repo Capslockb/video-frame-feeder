@@ -29,3 +29,11 @@ Do not use the current `--once` exit code as proof that a frame reached or was a
 The feeder currently sends only an `image/jpeg` content-type header. It has no supported API-secret, bearer-token, or configurable authentication header, so it cannot deliver frames to a bridge that requires authenticated `/frame` requests.
 
 Do not place credentials in `--endpoint`, `--source-label`, command-line arguments, or URLs, and do not weaken a bridge's authentication to make the feeder connect. Keep the endpoint on localhost or a trusted private network while the credential-source decision and reviewed transport change are tracked in [Issue #7](https://github.com/Capslockb/video-frame-feeder/issues/7).
+
+## The default source label can expose window titles
+
+When `--source-label` is omitted, the feeder currently reuses `--source` as the network-visible label, prints it locally, and sends it in the URL-encoded `source` query parameter.
+
+On Windows, a non-`screen` capture source is a window title. That title can contain document names, chat participants, customer names, or other sensitive context and may be retained by bridge, proxy, webhook, or telemetry logs.
+
+Until the privacy-sensitive runtime decision in [Issue #8](https://github.com/Capslockb/video-frame-feeder/issues/8) is implemented through a reviewed PR, supply an explicit neutral label such as `--source-label screen-share` when capturing a named window. This changes only the metadata label; it does not change which window FFmpeg captures.
