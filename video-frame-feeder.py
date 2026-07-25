@@ -13,8 +13,9 @@ its own frame-rate, audio-gating, and payload-size limits.
 
 v0.2 content-aware flow:
 
-  1. Capture an 8×8 grayscale thumbnail first. Its raw output is exactly
-     64 bytes: one byte per pixel.
+  1. Capture an 8×8 grayscale thumbnail first. With the current
+     `scale=8:8:flags=area,format=gray` raw-video FFmpeg pipeline, its output is
+     exactly 64 bytes: one byte per pixel.
   2. When content filtering is enabled, compute a 64-bit average hash and
      compare it with the last sent hash. Frames below `--min-change` are skipped.
   3. `--stddev-min` defaults to `0`, so uniform-frame filtering is disabled
@@ -31,8 +32,9 @@ Relevant flags:
   --stddev-min F        Minimum thumbnail pixel standard deviation.
                         Default: 0, which disables uniform-frame filtering.
   --no-content-filter   Send every successfully captured frame.
-  --source-label TEXT   Label included in the bridge source query and
-                        video-initialized notification. Defaults to --source.
+  --source-label TEXT   Label URL-encoded into the `source` query parameter
+                        (`?source=...`) and included in the video-initialized
+                        notification. Defaults to --source.
 """
 
 import argparse
