@@ -35,7 +35,7 @@ python video-frame-feeder.py --source-label "my-screen"
 # Disable content filtering and send every captured frame
 python video-frame-feeder.py --no-content-filter
 
-# Capture one frame, attempt delivery, and exit
+# Run one capture attempt and exit; filtering may skip delivery
 python video-frame-feeder.py --once
 ```
 
@@ -132,6 +132,7 @@ This repository does not currently declare a software license. Do not assume per
 - The feeder enforces a minimum one-second interval; the receiving bridge may apply additional FPS, MIME, size, activity, or user-presence gates.
 - Content filtering reduces repeated static frames but is not semantic scene detection. Small visual changes can be skipped depending on `--min-change`.
 - A rejected bridge response is logged but does not stop continuous capture.
+- `--once` currently returns a successful process status when capture succeeds even if delivery fails or the bridge rejects the frame. Do not use its exit code as a delivery health check until [Issue #6](https://github.com/Capslockb/video-frame-feeder/issues/6) is resolved.
 - The repository currently has no automated CI checks.
 
 See [`RESEARCH.md`](RESEARCH.md) for the original Discord video constraints, architecture rationale, and filtering experiments.
