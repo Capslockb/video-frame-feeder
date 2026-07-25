@@ -47,6 +47,8 @@ http://127.0.0.1:18943/frame
 
 Override it with either `--endpoint` or the `VOICE_BRIDGE_FRAME_URL` environment variable.
 
+Until [Issue #9](https://github.com/Capslockb/video-frame-feeder/issues/9) is resolved, keep the endpoint URL free of query parameters when using `--force`. The current implementation appends `?force=true` directly, so an existing query string is not merged safely and the bridge may not receive a real `force=true` parameter. Do not place credentials in endpoint query strings.
+
 ## Platform capture notes
 
 ### Linux
@@ -141,6 +143,7 @@ This repository does not currently declare a software license. Do not assume per
 - A rejected bridge response is logged but does not stop continuous capture.
 - `--once` currently returns a successful process status when capture succeeds even if delivery fails or the bridge rejects the frame. Do not use its exit code as a delivery health check until [Issue #6](https://github.com/Capslockb/video-frame-feeder/issues/6) is resolved.
 - Authenticated frame endpoints are not supported until [Issue #7](https://github.com/Capslockb/video-frame-feeder/issues/7) is resolved.
+- `--force` does not safely preserve an endpoint's existing query string; use a query-free endpoint until [Issue #9](https://github.com/Capslockb/video-frame-feeder/issues/9) is resolved.
 - The repository currently has no automated CI checks.
 
 See [`RESEARCH.md`](RESEARCH.md) for the original Discord video constraints, architecture rationale, and filtering experiments.
