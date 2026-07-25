@@ -29,7 +29,7 @@ ffmpeg -version
 # Default: screen capture at 1 fps with content-aware filtering
 python video-frame-feeder.py
 
-# Label the source in bridge requests and webhook announcements
+# Pass a neutral source label in the bridge request
 python video-frame-feeder.py --source-label "my-screen"
 
 # Disable hash/variance selection and offer a full frame on every iteration
@@ -93,7 +93,8 @@ If thumbnail capture fails, the feeder falls back to a full-frame capture and de
 --min-change N        Intended Hamming-distance range 0–64; default 2
 --stddev-min F        Intended thumbnail standard-deviation range 0–255; default 0
 --no-content-filter   Disable hash and variance filtering
---source-label TEXT   URL-encoded as the bridge's `source` query parameter
+--source-label TEXT   URL-encoded as the bridge's `source` query parameter;
+                      currently defaults to `--source`
 ```
 
 `--no-content-filter` disables the hash and standard-deviation decision, but the current loop still performs the thumbnail FFmpeg capture before the full-frame capture. Use the flag to bypass frame selection, not as a way to remove thumbnail-capture overhead.
@@ -123,7 +124,10 @@ This tool captures visible screen content and transmits it to the configured end
 - keep the bridge endpoint on localhost or a trusted private network;
 - do not expose an unauthenticated `/frame` endpoint publicly;
 - do not place credentials in the endpoint URL or command line, and do not disable bridge authentication to work around the feeder's current lack of authentication-header support;
-- verify the selected display, region, or window before continuous capture.
+- verify the selected display, region, or window before continuous capture;
+- remember that `--source-label` currently defaults to `--source`: when a Windows window title is used as the capture source, that title is printed locally and sent as URL query metadata. Supply an explicit neutral label until [Issue #8](https://github.com/Capslockb/video-frame-feeder/issues/8) is resolved.
+
+The feeder only supplies the `source` query parameter. Whether that value is retained in bridge, proxy, webhook, or telemetry logs depends on the receiving deployment.
 
 ## License status
 
