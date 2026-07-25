@@ -37,3 +37,9 @@ When `--source-label` is omitted, the feeder currently reuses `--source` as the 
 On Windows, a non-`screen` capture source is a window title. That title can contain document names, chat participants, customer names, or other sensitive context and may be retained by bridge, proxy, webhook, or telemetry logs.
 
 Until the privacy-sensitive runtime decision in [Issue #8](https://github.com/Capslockb/video-frame-feeder/issues/8) is implemented through a reviewed PR, supply an explicit neutral label such as `--source-label screen-share` when capturing a named window. This changes only the metadata label; it does not change which window FFmpeg captures.
+
+## `--force` can corrupt an existing endpoint query string
+
+The current force path appends `?force=true` directly to the configured endpoint. If the endpoint already contains a query string, the result contains a second `?`, and the bridge may interpret `force=true` as part of the earlier parameter's value instead of as its own parameter.
+
+Until the HTTP query construction is corrected through the reviewed transport work in [Issue #9](https://github.com/Capslockb/video-frame-feeder/issues/9), use a query-free endpoint whenever `--force` is enabled. Do not put credentials in endpoint query parameters. A future fix must preserve legitimate non-secret parameters and encode the optional source label exactly once without changing capture, filtering, authentication, dependencies, CI, or release behavior.
