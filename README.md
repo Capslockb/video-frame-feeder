@@ -1,41 +1,129 @@
 # video-frame-feeder
 
-Cross-platform FFmpeg screen capture → POST to Gemini Live voice bridge /frame endpoint.
+Cross-platform FFmpeg screen capture that sends JPEG frames to a compatible Gemini Live voice bridge `/frame` endpoint.
+
+The feeder captures at no more than 1 frame per second and uses an 8×8 average-hash precheck to avoid generating and sending a full JPEG when the screen has not meaningfully changed.
+
+## Requirements
+
+- Python 3
+- `requests`
+- FFmpeg with the capture backend for your platform:
+  - Linux: `x11grab`
+  - macOS: `avfoundation`
+  - Windows: `gdigrab`
+- A running voice bridge with a compatible `/frame` endpoint
+
+Install the Python dependency and verify FFmpeg before starting:
+
+```bash
+python -m pip install requests
+ffmpeg -version
+```
 
 ## Quick start
 
 ```bash
-# Default: 1fps capture, content-aware filtering (identical frames skipped)
+# Default: screen capture at 1 fps with content-aware filtering
 python video-frame-feeder.py
 
-# Label the source for webhook announces
+# Label the source for bridge webhook announcements
 python video-frame-feeder.py --source-label "my-screen"
 
-# Disable content filter (send every frame, like v0.1)
+# Disable content filtering and send every captured frame
 python video-frame-feeder.py --no-content-filter
 
-# Single frame test
+# Capture one frame, attempt delivery, and exit
 python video-frame-feeder.py --once
 ```
 
-## Content-aware filtering (v0.2)
+The default endpoint is:
 
-The feeder pre-captures an 8×8 grayscale thumbnail, computes a 64-bit average hash
-(aHash), and skips the full JPEG capture when:
-
-- The thumbnail has zero variance (uniform/solid color) — `--stddev-min 0` (disabled by default)
-- The hash hasn't changed enough — `--min-change 2` (Hamming distance, default)
-
-If the thumbnail pipe fails (ffmpeg version / filter incompatibility), the feeder
-falls back to unfiltered full-frame capture + POST — no silent blackout.
-
-```
---min-change N        Hamming distance threshold (0-64). Default 2.
---stddev-min F        Min pixel stddev (0-255). Default 0 (disabled).
---no-content-filter   Disable all filtering (v0.1 behavior).
---source-label TEXT   Label passed to bridge for webhook announce.
+```text
+http://127.0.0.1:18943/frame
 ```
 
-## Bridge endpoint
+Override it with either `--endpoint` or the `VOICE_BRIDGE_FRAME_URL` environment variable.
 
-Default: `http://127.0.0.1:18943/frame` (env: `VOICE_BRIDGE_FRAME_URL`).
+## Platform capture notes
+
+### Linux
+
+`--source screen` captures an X11 display. Use `--display`, `--x`, `--y`, `--width`, and `--height` to select a region.
+
+A non-`screen` source is treated as an X11 window ID:
+
+```bash
+python video-frame-feeder.py --source 0x04600007 --width 1280 --height 720
+```
+
+Wayland sessions may require XWayland or a different capture path supported by the local FFmpeg build.
+
+### macOS
+
+The current implementation uses the FFmpeg `avfoundation` display input `1:none`. The correct display index can vary by machine and should be confirmed with your local FFmpeg device listing. Window-title selection and the Linux-only offset flags are not used on macOS.
+
+### Windows
+
+`--source screen` captures the desktop. Any other `--source` value is treated as a window title for `gdigrab`:
+
+```bash
+python video-frame-feeder.py --source "Discord" --width 1280 --height 720
+```
+
+## Content-aware filtering
+
+For each capture attempt, the feeder:
+
+1. Captures an 8×8 grayscale thumbnail: 64 raw bytes.
+2. Computes a 64-bit average hash (`aHash`).
+3. Compares it with the last frame selected for delivery.
+4. Captures the full JPEG only when the hash changed enough.
+
+A frame is skipped when:
+
+- its thumbnail variance is below `--stddev-min`; this check is disabled by default with `--stddev-min 0`, or
+- its hash distance is below `--min-change`; the default is `2`.
+
+If thumbnail capture fails, the feeder falls back to a full-frame capture and delivery attempt instead of silently stopping the feed.
+
+```text
+--min-change N        Hamming-distance threshold from 0 to 64; default 2
+--stddev-min F        Minimum thumbnail pixel standard deviation; default 0
+--no-content-filter   Disable hash and variance filtering
+--source-label TEXT   Source label passed to the bridge
+```
+
+## Important options
+
+```text
+--endpoint URL        Bridge /frame endpoint
+--interval SECONDS    Capture interval; values below 1.0 are clamped to 1.0
+--source VALUE        screen, X11 window ID, or Windows window title
+--width / --height    Capture dimensions; defaults to 768×768
+--x / --y             Linux screen-region offset
+--display DISPLAY     Linux X11 display
+--force               Bypass the bridge's recent-audio gate
+--once                Run one capture attempt and exit
+```
+
+Use `--force` deliberately: it can cause frames to be accepted even when nobody has recently spoken, increasing unnecessary model input.
+
+## Privacy and network safety
+
+This tool captures visible screen content and transmits it to the configured endpoint. Before running it:
+
+- close or hide secrets, private messages, credentials, and personal data;
+- keep the bridge endpoint on localhost or a trusted private network;
+- do not expose an unauthenticated `/frame` endpoint publicly;
+- verify the selected display, region, or window before continuous capture.
+
+## Behavior and limitations
+
+- This utility does not receive Discord camera or screenshare streams through the Discord bot API. It captures what is visible on the host operating system.
+- The feeder enforces a minimum one-second interval; the receiving bridge may apply additional FPS, MIME, size, activity, or user-presence gates.
+- Content filtering reduces repeated static frames but is not semantic scene detection. Small visual changes can be skipped depending on `--min-change`.
+- A rejected bridge response is logged but does not stop continuous capture.
+- The repository currently has no automated CI checks.
+
+See [`RESEARCH.md`](RESEARCH.md) for the original Discord video constraints, architecture rationale, and filtering experiments.
