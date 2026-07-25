@@ -90,11 +90,13 @@ A frame is skipped when:
 If thumbnail capture fails, the feeder falls back to a full-frame capture and delivery attempt instead of silently stopping the feed.
 
 ```text
---min-change N        Hamming-distance threshold from 0 to 64; default 2
---stddev-min F        Minimum thumbnail pixel standard deviation; default 0
+--min-change N        Intended Hamming-distance range 0–64; default 2
+--stddev-min F        Intended thumbnail standard-deviation range 0–255; default 0
 --no-content-filter   Disable hash and variance filtering
 --source-label TEXT   URL-encoded as the bridge's `source` query parameter
 ```
+
+The parser does not currently reject out-of-range filter thresholds. Keep both values within the documented ranges until [Issue #5](https://github.com/Capslockb/video-frame-feeder/issues/5) is resolved.
 
 ## Important options
 
