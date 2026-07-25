@@ -27,7 +27,7 @@ ffmpeg -version
 # Default: screen capture at 1 fps with content-aware filtering
 python video-frame-feeder.py
 
-# Label the source for bridge webhook announcements
+# Label the source in bridge requests and webhook announcements
 python video-frame-feeder.py --source-label "my-screen"
 
 # Disable content filtering and send every captured frame
@@ -75,7 +75,7 @@ python video-frame-feeder.py --source "Discord" --width 1280 --height 720
 
 For each capture attempt, the feeder:
 
-1. Captures an 8×8 grayscale thumbnail: 64 raw bytes.
+1. Captures an 8×8 grayscale thumbnail with the current `scale=8:8:flags=area,format=gray` raw-video pipeline: 64 bytes, one byte per pixel.
 2. Computes a 64-bit average hash (`aHash`).
 3. Compares it with the last frame selected for delivery.
 4. Captures the full JPEG only when the hash changed enough.
@@ -91,7 +91,7 @@ If thumbnail capture fails, the feeder falls back to a full-frame capture and de
 --min-change N        Hamming-distance threshold from 0 to 64; default 2
 --stddev-min F        Minimum thumbnail pixel standard deviation; default 0
 --no-content-filter   Disable hash and variance filtering
---source-label TEXT   Source label passed to the bridge
+--source-label TEXT   URL-encoded as the bridge's `source` query parameter
 ```
 
 ## Important options
