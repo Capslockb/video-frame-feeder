@@ -17,7 +17,8 @@ Additional current boundaries:
 - the feeder sends unauthenticated `/frame` requests and cannot connect to endpoints requiring an API secret or authorization header; see [Issue #7](https://github.com/Capslockb/video-frame-feeder/issues/7);
 - `--source-label` defaults to `--source`, which can expose a Windows window title in request metadata and logs; use an explicit neutral label while [Issue #8](https://github.com/Capslockb/video-frame-feeder/issues/8) remains open;
 - `--once` can exit successfully after HTTP failure or bridge rejection, so its process status is not delivery evidence; see [Issue #6](https://github.com/Capslockb/video-frame-feeder/issues/6);
-- `--force` does not safely merge an endpoint's existing query string; use a query-free endpoint while [Issue #9](https://github.com/Capslockb/video-frame-feeder/issues/9) remains open; and
+- `--force` does not safely merge an endpoint's existing query string; use a query-free endpoint while [Issue #9](https://github.com/Capslockb/video-frame-feeder/issues/9) remains open;
+- capture dimensions and interval values are not fully validated; keep dimensions positive and the interval finite while [Issue #10](https://github.com/Capslockb/video-frame-feeder/issues/10) remains open; and
 - filter-threshold ranges are documented but not enforced; see [Issue #5](https://github.com/Capslockb/video-frame-feeder/issues/5).
 
 ## Current repository status
@@ -58,7 +59,7 @@ The endpoint can be overridden with `--endpoint` or `VOICE_BRIDGE_FRAME_URL`.
 
 When `--force` is enabled, the current implementation appends `?force=true` directly. An endpoint that already contains query parameters can therefore become malformed. Keep forced endpoints query-free until Issue #9 is fixed, and never place credentials in endpoint query strings.
 
-The feeder enforces a minimum one-second interval. The receiving bridge may apply additional FPS, MIME-type, size, recent-audio, user-presence, or enable/disable gates.
+The feeder enforces a minimum one-second interval for ordinary finite values. The receiving bridge may apply additional FPS, MIME-type, size, recent-audio, user-presence, or enable/disable gates. Non-finite interval values are not currently rejected and can fail at the continuous-mode sleep boundary.
 
 ### Hermes `voice_live_frame` tool
 
@@ -129,9 +130,10 @@ Thumbnail-pipeline failure must not cause a permanent blackout. The implementati
 
 ```text
 --endpoint URL        Bridge /frame endpoint
---interval SECONDS    Capture interval; values below 1.0 are clamped to 1.0
+--interval SECONDS    Finite values below 1.0 are clamped to 1.0;
+                      non-finite values are not currently rejected
 --source VALUE        screen, X11 window ID, or Windows window title
---width / --height    Capture dimensions; defaults to 768×768
+--width / --height    Positive capture dimensions expected; defaults to 768×768
 --x / --y             Linux screen-region offset
 --display DISPLAY     Linux X11 display
 --force               Bypass the bridge's recent-audio gate
@@ -239,6 +241,7 @@ The proposal described a Discord command accepting an attachment. The shipped up
 - Do not publicly expose an unauthenticated frame-ingestion endpoint.
 - Do not put credentials in endpoint URLs or command-line arguments.
 - Supply an explicit neutral `--source-label` when the capture source itself contains sensitive context.
+- Keep capture dimensions positive and use a finite interval value until Issue #10 is resolved.
 - Verify the selected display, region, or window before continuous capture.
 - Use `--force` only when bypassing recent-audio gating is intentional, and keep the endpoint query-free until Issue #9 is resolved.
 - Use `--no-content-filter` only when sending every captured frame is intentional.
