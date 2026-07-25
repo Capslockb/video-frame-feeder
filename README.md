@@ -12,7 +12,7 @@ The feeder captures at no more than 1 frame per second and uses an 8×8 average-
   - Linux: `x11grab`
   - macOS: `avfoundation`
   - Windows: `gdigrab`
-- A running voice bridge with a compatible `/frame` endpoint
+- A running voice bridge with a compatible `/frame` endpoint. The current feeder sends an unauthenticated `image/jpeg` POST and cannot connect to endpoints that require an API secret or authorization header; see [Issue #7](https://github.com/Capslockb/video-frame-feeder/issues/7).
 
 Install the Python dependency and verify FFmpeg before starting:
 
@@ -120,6 +120,7 @@ This tool captures visible screen content and transmits it to the configured end
 - close or hide secrets, private messages, credentials, and personal data;
 - keep the bridge endpoint on localhost or a trusted private network;
 - do not expose an unauthenticated `/frame` endpoint publicly;
+- do not place credentials in the endpoint URL or command line, and do not disable bridge authentication to work around the feeder's current lack of authentication-header support;
 - verify the selected display, region, or window before continuous capture.
 
 ## License status
@@ -133,6 +134,7 @@ This repository does not currently declare a software license. Do not assume per
 - Content filtering reduces repeated static frames but is not semantic scene detection. Small visual changes can be skipped depending on `--min-change`.
 - A rejected bridge response is logged but does not stop continuous capture.
 - `--once` currently returns a successful process status when capture succeeds even if delivery fails or the bridge rejects the frame. Do not use its exit code as a delivery health check until [Issue #6](https://github.com/Capslockb/video-frame-feeder/issues/6) is resolved.
+- Authenticated frame endpoints are not supported until [Issue #7](https://github.com/Capslockb/video-frame-feeder/issues/7) is resolved.
 - The repository currently has no automated CI checks.
 
 See [`RESEARCH.md`](RESEARCH.md) for the original Discord video constraints, architecture rationale, and filtering experiments.
