@@ -107,9 +107,9 @@ The parser does not currently reject out-of-range filter thresholds. Keep both v
 
 ```text
 --endpoint URL        Bridge /frame endpoint
---interval SECONDS    Capture interval; values below 1.0 are clamped to 1.0
+--interval SECONDS    Capture interval; finite values below 1.0 are clamped to 1.0
 --source VALUE        screen, X11 window ID, or Windows window title
---width / --height    Capture dimensions; defaults to 768×768
+--width / --height    Positive capture dimensions; defaults to 768×768
 --x / --y             Linux screen-region offset
 --display DISPLAY     Linux X11 display
 --force               Bypass the bridge's recent-audio gate
@@ -144,6 +144,7 @@ This repository does not currently declare a software license. Do not assume per
 - `--once` currently returns a successful process status when capture succeeds even if delivery fails or the bridge rejects the frame. Do not use its exit code as a delivery health check until [Issue #6](https://github.com/Capslockb/video-frame-feeder/issues/6) is resolved.
 - Authenticated frame endpoints are not supported until [Issue #7](https://github.com/Capslockb/video-frame-feeder/issues/7) is resolved.
 - `--force` does not safely preserve an endpoint's existing query string; use a query-free endpoint until [Issue #9](https://github.com/Capslockb/video-frame-feeder/issues/9) is resolved.
+- Capture dimensions and interval values are not fully validated. Keep width and height positive, and use a finite interval value; `nan` or infinite intervals can fail only after the first continuous-mode iteration. The parser fix is tracked in [Issue #10](https://github.com/Capslockb/video-frame-feeder/issues/10).
 - The repository currently has no automated CI checks.
 
 See [`RESEARCH.md`](RESEARCH.md) for the original Discord video constraints, architecture rationale, and filtering experiments.
