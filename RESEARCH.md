@@ -8,6 +8,17 @@
 > This document combines a historical research snapshot with the behavior shipped in this repository.
 > Model names, API fields, pricing, token estimates, Discord internals, and upstream bridge details can change and must be freshly verified before operational use. The current feeder behavior is defined by `video-frame-feeder.py` and summarized in `README.md`.
 
+## Current operational blockers
+
+The flow described below is implemented in the repository, but current `main` cannot construct its CLI because `-h` is assigned to both argparse help and `--height`. All commands fail before capture begins until [Issue #4](https://github.com/Capslockb/video-frame-feeder/issues/4) is resolved through reviewed executable work.
+
+Additional current boundaries:
+
+- the feeder sends unauthenticated `/frame` requests and cannot connect to endpoints requiring an API secret or authorization header; see [Issue #7](https://github.com/Capslockb/video-frame-feeder/issues/7);
+- `--source-label` defaults to `--source`, which can expose a Windows window title in request metadata and logs; use an explicit neutral label while [Issue #8](https://github.com/Capslockb/video-frame-feeder/issues/8) remains open;
+- `--once` can exit successfully after HTTP failure or bridge rejection, so its process status is not delivery evidence; see [Issue #6](https://github.com/Capslockb/video-frame-feeder/issues/6); and
+- filter-threshold ranges are documented but not enforced; see [Issue #5](https://github.com/Capslockb/video-frame-feeder/issues/5).
+
 ## Current repository status
 
 The shipped feeder is an external host-screen capture utility. It does **not** receive Discord camera or screenshare media through the Discord bot API.
@@ -125,7 +136,8 @@ Thumbnail-pipeline failure must not cause a permanent blackout. The implementati
 --min-change N        Hamming-distance threshold, 0–64; default 2
 --stddev-min F        Thumbnail pixel standard-deviation threshold; default 0
 --no-content-filter   Disable hash and variance filtering
---source-label TEXT   URL-encoded as the bridge's `source` query parameter
+--source-label TEXT   URL-encoded as the bridge's `source` query parameter;
+                      currently defaults to `--source`
 ```
 
 ## Historical Gemini Live research snapshot
@@ -222,6 +234,8 @@ The proposal described a Discord command accepting an attachment. The shipped up
 - Screen capture can expose credentials, messages, personal data, or private windows.
 - Keep the `/frame` endpoint on localhost or a trusted private network.
 - Do not publicly expose an unauthenticated frame-ingestion endpoint.
+- Do not put credentials in endpoint URLs or command-line arguments.
+- Supply an explicit neutral `--source-label` when the capture source itself contains sensitive context.
 - Verify the selected display, region, or window before continuous capture.
 - Use `--force` only when bypassing recent-audio gating is intentional.
 - Use `--no-content-filter` only when sending every captured frame is intentional.
