@@ -2,7 +2,7 @@
 
 **Original research date:** 2026-05-27  
 **Implementation update:** 2026-06-07  
-**Documentation status checked:** 2026-07-25
+**Documentation status checked:** 2026-07-26
 
 > [!IMPORTANT]
 > This document combines a historical research snapshot with the behavior shipped in this repository.
@@ -16,7 +16,8 @@ Additional current boundaries:
 
 - the feeder sends unauthenticated `/frame` requests and cannot connect to endpoints requiring an API secret or authorization header; see [Issue #7](https://github.com/Capslockb/video-frame-feeder/issues/7);
 - `--source-label` defaults to `--source`, which can expose a Windows window title in request metadata and logs; use an explicit neutral label while [Issue #8](https://github.com/Capslockb/video-frame-feeder/issues/8) remains open;
-- `--once` can exit successfully after HTTP failure or bridge rejection, so its process status is not delivery evidence; see [Issue #6](https://github.com/Capslockb/video-frame-feeder/issues/6); and
+- `--once` can exit successfully after HTTP failure or bridge rejection, so its process status is not delivery evidence; see [Issue #6](https://github.com/Capslockb/video-frame-feeder/issues/6);
+- `--force` does not safely merge an endpoint's existing query string; use a query-free endpoint while [Issue #9](https://github.com/Capslockb/video-frame-feeder/issues/9) remains open; and
 - filter-threshold ranges are documented but not enforced; see [Issue #5](https://github.com/Capslockb/video-frame-feeder/issues/5).
 
 ## Current repository status
@@ -54,6 +55,8 @@ http://127.0.0.1:18943/frame
 ```
 
 The endpoint can be overridden with `--endpoint` or `VOICE_BRIDGE_FRAME_URL`.
+
+When `--force` is enabled, the current implementation appends `?force=true` directly. An endpoint that already contains query parameters can therefore become malformed. Keep forced endpoints query-free until Issue #9 is fixed, and never place credentials in endpoint query strings.
 
 The feeder enforces a minimum one-second interval. The receiving bridge may apply additional FPS, MIME-type, size, recent-audio, user-presence, or enable/disable gates.
 
@@ -237,7 +240,7 @@ The proposal described a Discord command accepting an attachment. The shipped up
 - Do not put credentials in endpoint URLs or command-line arguments.
 - Supply an explicit neutral `--source-label` when the capture source itself contains sensitive context.
 - Verify the selected display, region, or window before continuous capture.
-- Use `--force` only when bypassing recent-audio gating is intentional.
+- Use `--force` only when bypassing recent-audio gating is intentional, and keep the endpoint query-free until Issue #9 is resolved.
 - Use `--no-content-filter` only when sending every captured frame is intentional.
 - Reverify all external platform, API, model, and pricing claims before production use.
 
