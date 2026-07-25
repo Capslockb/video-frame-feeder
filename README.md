@@ -23,6 +23,8 @@ ffmpeg -version
 
 ## Quick start
 
+> **Current startup blocker:** `main` cannot construct the CLI because `-h` is assigned to both argparse help and `--height`. The commands below will fail until [Issue #4](https://github.com/Capslockb/video-frame-feeder/issues/4) is fixed through a reviewed code change. Do not disable argparse's standard help action as a workaround.
+
 ```bash
 # Default: screen capture at 1 fps with content-aware filtering
 python video-frame-feeder.py
