@@ -2,7 +2,7 @@
 
 Cross-platform FFmpeg screen capture that sends JPEG frames to a compatible Gemini Live voice bridge `/frame` endpoint.
 
-The feeder captures at no more than 1 frame per second and uses an 8×8 average-hash precheck to avoid generating and sending a full JPEG when the screen has not meaningfully changed.
+By default, the feeder starts no more than one capture iteration per second and uses an 8×8 average-hash precheck to avoid generating and sending a full JPEG when the screen has not meaningfully changed.
 
 ## Requirements
 
@@ -32,7 +32,7 @@ python video-frame-feeder.py
 # Label the source in bridge requests and webhook announcements
 python video-frame-feeder.py --source-label "my-screen"
 
-# Disable content filtering and send every captured frame
+# Disable hash/variance selection and offer a full frame on every iteration
 python video-frame-feeder.py --no-content-filter
 
 # Run one capture attempt and exit; filtering may skip delivery
@@ -96,6 +96,8 @@ If thumbnail capture fails, the feeder falls back to a full-frame capture and de
 --source-label TEXT   URL-encoded as the bridge's `source` query parameter
 ```
 
+`--no-content-filter` disables the hash and standard-deviation decision, but the current loop still performs the thumbnail FFmpeg capture before the full-frame capture. Use the flag to bypass frame selection, not as a way to remove thumbnail-capture overhead.
+
 The parser does not currently reject out-of-range filter thresholds. Keep both values within the documented ranges until [Issue #5](https://github.com/Capslockb/video-frame-feeder/issues/5) is resolved.
 
 ## Important options
@@ -130,7 +132,7 @@ This repository does not currently declare a software license. Do not assume per
 ## Behavior and limitations
 
 - This utility does not receive Discord camera or screenshare streams through the Discord bot API. It captures what is visible on the host operating system.
-- The feeder enforces a minimum one-second interval; the receiving bridge may apply additional FPS, MIME, size, activity, or user-presence gates.
+- The feeder enforces a minimum one-second interval between capture iterations; the receiving bridge may apply additional FPS, MIME, size, activity, or user-presence gates.
 - Content filtering reduces repeated static frames but is not semantic scene detection. Small visual changes can be skipped depending on `--min-change`.
 - A rejected bridge response is logged but does not stop continuous capture.
 - `--once` currently returns a successful process status when capture succeeds even if delivery fails or the bridge rejects the frame. Do not use its exit code as a delivery health check until [Issue #6](https://github.com/Capslockb/video-frame-feeder/issues/6) is resolved.
