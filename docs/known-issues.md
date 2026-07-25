@@ -18,6 +18,14 @@ Out-of-range values can silently change behavior: a `--min-change` value above 6
 
 Until argument validation is implemented through reviewed executable work, keep `--min-change` within 0–64 and `--stddev-min` within 0–255. The implementation task is tracked in [Issue #5](https://github.com/Capslockb/video-frame-feeder/issues/5) so it does not become entangled with the startup fix.
 
+## Capture dimensions and interval values are not fully validated
+
+The parser currently accepts zero or negative `--width` and `--height` values and passes them to FFmpeg, where they fail only during capture. It also accepts non-finite floating-point interval values.
+
+After the startup blocker in Issue #4 is fixed, `--interval nan` can survive the current minimum-interval clamp and raise `ValueError` when continuous mode reaches `time.sleep()`. An infinite interval can raise `OverflowError` at the same boundary. A one-shot run exits before sleeping and may not expose this configuration defect.
+
+Until [Issue #10](https://github.com/Capslockb/video-frame-feeder/issues/10) is resolved through reviewed executable work, keep width and height positive and use a finite positive interval. The intended normal behavior remains a minimum one-second interval; values below `1.0` are clamped upward by the current implementation.
+
 ## One-shot delivery failures can still exit successfully
 
 The process exit status currently reflects capture errors only. In `--once` mode, an HTTP failure or a bridge response with `accepted: false` is logged, but the process can still exit with status `0` when capture itself succeeded.
