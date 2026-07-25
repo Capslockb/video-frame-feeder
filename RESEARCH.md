@@ -14,7 +14,7 @@ The shipped feeder is an external host-screen capture utility. It does **not** r
 
 For each capture attempt, it:
 
-1. Captures an 8×8 grayscale thumbnail: exactly 64 raw bytes.
+1. Captures an 8×8 grayscale thumbnail with the current `scale=8:8:flags=area,format=gray` raw-video pipeline: exactly 64 bytes, one byte per pixel.
 2. Computes a 64-bit average hash (`aHash`).
 3. Optionally applies a thumbnail standard-deviation threshold.
 4. Compares the hash with the last frame selected for delivery.
@@ -93,7 +93,7 @@ ffmpeg
   -f rawvideo
 ```
 
-The output is 64 grayscale pixels.
+The output is 64 grayscale pixels, encoded as one raw byte per pixel by the current pipeline.
 
 ### Average hash
 
@@ -125,7 +125,7 @@ Thumbnail-pipeline failure must not cause a permanent blackout. The implementati
 --min-change N        Hamming-distance threshold, 0–64; default 2
 --stddev-min F        Thumbnail pixel standard-deviation threshold; default 0
 --no-content-filter   Disable hash and variance filtering
---source-label TEXT   Source label passed to the bridge
+--source-label TEXT   URL-encoded as the bridge's `source` query parameter
 ```
 
 ## Historical Gemini Live research snapshot
@@ -215,7 +215,7 @@ The proposal described a Discord command accepting an attachment. The shipped up
 | Video token-budget counter | Not implemented | Use capture and bridge gating plus measured usage |
 | Disable bridge video by default | Not changed in historical upstream status | Configure the bridge, not feeder filtering flags |
 | Attachment-based `/voice-live-frame` | Not shipped | Replaced by URL-based Hermes tool |
-| Source-label webhook metadata | Shipped | `--source-label` passes source context |
+| Source-label webhook metadata | Shipped | Passes source context through the URL-encoded `source` query parameter |
 
 ## Safety conclusions
 
