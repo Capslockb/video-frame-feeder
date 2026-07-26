@@ -26,6 +26,8 @@ After the startup blocker in Issue #4 is fixed, `--interval nan` can survive the
 
 Until [Issue #10](https://github.com/Capslockb/video-frame-feeder/issues/10) is resolved through reviewed executable work, keep width and height positive and use a finite positive interval. The intended normal behavior remains a minimum one-second interval; values below `1.0` are clamped upward by the current implementation.
 
+Owner review has accepted this correction for implementation. The pending code change must reject non-positive dimensions and non-finite or non-positive intervals through normal argparse errors, preserve the current defaults, document the selected sub-second compatibility policy, and add parser tests after Issue #4 removes the conflicting `-h` alias. No executable correction or exact-head test evidence is present yet.
+
 ## One-shot delivery failures can still exit successfully
 
 The process exit status currently reflects capture errors only. In `--once` mode, an HTTP failure or a bridge response with `accepted: false` is logged, but the process can still exit with status `0` when capture itself succeeded.
@@ -44,10 +46,14 @@ When `--source-label` is omitted, the feeder currently reuses `--source` as the 
 
 On Windows, a non-`screen` capture source is a window title. That title can contain document names, chat participants, customer names, or other sensitive context and may be retained by bridge, proxy, webhook, or telemetry logs.
 
-Until the privacy-sensitive runtime decision in [Issue #8](https://github.com/Capslockb/video-frame-feeder/issues/8) is implemented through a reviewed PR, supply an explicit neutral label such as `--source-label screen-share` when capturing a named window. This changes only the network-visible metadata label; it does not change which window FFmpeg captures and does not stop the current startup diagnostics from printing the raw `--source` value and part of the generated FFmpeg command. Keep the feeder console and any captured logs private when a window title contains sensitive information.
+Until the accepted privacy correction in [Issue #8](https://github.com/Capslockb/video-frame-feeder/issues/8) is implemented through a reviewed PR, supply an explicit neutral label such as `--source-label screen-share` when capturing a named window. This changes only the network-visible metadata label; it does not change which window FFmpeg captures and does not stop the current startup diagnostics from printing the raw `--source` value and part of the generated FFmpeg command. Keep the feeder console and any captured logs private when a window title contains sensitive information.
+
+Owner review has accepted making the default network-visible label absent or neutral, preserving explicit `--source-label` values with exactly-once encoding, keeping capture selection unchanged, and preventing implicit source/window names from entering routine request URLs or logs. The runtime patch and isolated privacy tests remain pending and must not be combined with capture, hashing, authentication, dependency, CI, or release work.
 
 ## `--force` can corrupt an existing endpoint query string
 
 The current force path appends `?force=true` directly to the configured endpoint. If the endpoint already contains a query string, the result contains a second `?`, and the bridge may interpret `force=true` as part of the earlier parameter's value instead of as its own parameter.
 
-Until the HTTP query construction is corrected through the reviewed transport work in [Issue #9](https://github.com/Capslockb/video-frame-feeder/issues/9), use a query-free endpoint whenever `--force` is enabled. Do not put credentials in endpoint query parameters. A future fix must preserve legitimate non-secret parameters and encode the optional source label exactly once without changing capture, filtering, authentication, dependencies, CI, or release behavior.
+Until the accepted HTTP correction in [Issue #9](https://github.com/Capslockb/video-frame-feeder/issues/9) is implemented, use a query-free endpoint whenever `--force` is enabled. Do not put credentials in endpoint query parameters.
+
+Owner review has accepted rebuilding the request URL with standard URL/query utilities so existing non-secret parameters survive and optional `force` and `source` values are added as distinct, exactly-once-encoded parameters. Mocked tests must cover existing queries, blank and duplicate values, encoded labels, force-disabled behavior, and fragments without changing capture, filtering, authentication, dependencies, CI, or release behavior. No corrective commit or exact-head test evidence is present yet.
