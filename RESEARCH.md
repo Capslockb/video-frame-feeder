@@ -20,8 +20,10 @@ Additional current boundaries:
 - `--force` does not safely merge an endpoint's existing query string; use a query-free endpoint while [Issue #9](https://github.com/Capslockb/video-frame-feeder/issues/9) remains open;
 - capture dimensions and interval values are not fully validated; keep dimensions positive and the interval finite while [Issue #10](https://github.com/Capslockb/video-frame-feeder/issues/10) remains open;
 - filter-threshold ranges are documented but not enforced; see [Issue #5](https://github.com/Capslockb/video-frame-feeder/issues/5);
-- the filtered-path hash baseline advances before full-frame capture and bridge acceptance, so a transient failure can suppress an unchanged retry; see accepted [Issue #11](https://github.com/Capslockb/video-frame-feeder/issues/11); and
-- average hash can miss material global-brightness changes that preserve relative pixel structure; see accepted [Issue #12](https://github.com/Capslockb/video-frame-feeder/issues/12).
+- the filtered-path hash baseline advances before full-frame capture and bridge acceptance, so a transient failure can suppress an unchanged retry; see accepted [Issue #11](https://github.com/Capslockb/video-frame-feeder/issues/11);
+- average hash can miss material global-brightness changes that preserve relative pixel structure; see accepted [Issue #12](https://github.com/Capslockb/video-frame-feeder/issues/12);
+- successful HTTP responses are not schema-validated: non-object JSON can terminate the loop, while a truthy non-boolean `accepted` value can be miscounted as success; see accepted [Issue #13](https://github.com/Capslockb/video-frame-feeder/issues/13); and
+- frame POSTs follow redirects, so HTTP 307 or 308 can resend the captured JPEG beyond the configured endpoint; use a direct non-redirecting endpoint while accepted [Issue #14](https://github.com/Capslockb/video-frame-feeder/issues/14) remains open.
 
 ## Current repository status
 
@@ -62,6 +64,10 @@ The endpoint can be overridden with `--endpoint` or `VOICE_BRIDGE_FRAME_URL`.
 When `--force` is enabled, the current implementation appends `?force=true` directly. This repository only constructs that request; whether the receiving endpoint recognizes the parameter or changes any gate is outside the feeder's control. An endpoint that already contains query parameters can become malformed. Keep forced endpoints query-free until Issue #9 is fixed, never place credentials in endpoint query strings, and verify the receiving bridge contract before relying on forced acceptance.
 
 The feeder enforces a minimum one-second interval for ordinary finite values. The receiving bridge may apply additional FPS, MIME-type, size, recent-audio, user-presence, or enable/disable gates. Non-finite interval values are not currently rejected and can fail at the continuous-mode sleep boundary.
+
+A successful HTTP status is not sufficient delivery evidence. The current feeder assumes the decoded response is an object and treats any truthy `accepted` value as success. Until Issue #13 is resolved, use only a bridge known to return a JSON object with a literal boolean `accepted` field; malformed or wrong-type responses can otherwise crash the feeder or corrupt delivery statistics.
+
+The current HTTP client also follows redirects. In particular, a 307 or 308 can resend the JPEG body to the redirect target, and the final response does not prove that the explicitly configured bridge handled the frame. Until Issue #14 is resolved, use a direct stable non-redirecting endpoint on loopback or a trusted private network.
 
 ### Hermes `voice_live_frame` tool
 
@@ -233,6 +239,8 @@ The proposal described a Discord command accepting an attachment. The shipped up
 | Content-aware aHash filtering | Shipped | Enabled by default |
 | Uniform-frame stddev filtering | Shipped, opt-in | Default threshold is `0` |
 | Thumbnail failure fallback | Shipped | Falls through to full capture |
+| Bridge response-schema validation | Not implemented | Require an object with literal boolean `accepted`; tracked in Issue #13 |
+| Redirect rejection | Not implemented | Use a direct non-redirecting endpoint; tracked in Issue #14 |
 | `mediaResolution: "LOW"` | Rejected and removed | Do not use without fresh verification |
 | Turn-coverage override | Reported already present upstream | Verify against current bridge/API |
 | Video token-budget counter | Not implemented | Use capture and bridge gating plus measured usage |
@@ -244,6 +252,7 @@ The proposal described a Discord command accepting an attachment. The shipped up
 
 - Screen capture can expose credentials, messages, personal data, or private windows.
 - Keep the `/frame` endpoint on localhost or a trusted private network.
+- Use a direct stable endpoint that does not redirect until Issue #14 is resolved; a final successful response is not proof that the configured bridge received the frame directly.
 - Do not publicly expose an unauthenticated frame-ingestion endpoint.
 - Do not put credentials in endpoint URLs or command-line arguments.
 - Supply an explicit neutral `--source-label` when the capture source itself contains sensitive context.
@@ -252,6 +261,7 @@ The proposal described a Discord command accepting an attachment. The shipped up
 - Use `--force` only when requesting forced acceptance is intentional, keep the endpoint query-free until Issue #9 is resolved, and verify that the receiving bridge recognizes the parameter.
 - Use `--no-content-filter` when materially different global-luminance transitions must always be offered, or when sending every captured scene change is otherwise intentional.
 - Treat filtered-path delivery failures as potentially suppressing an unchanged retry until Issue #11 is resolved.
+- Treat only a response object with literal boolean `accepted: true` as delivery evidence until Issue #13 is resolved.
 - Reverify all external platform, API, model, and pricing claims before production use.
 
 ## Source-of-truth hierarchy
