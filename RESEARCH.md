@@ -18,8 +18,10 @@ Additional current boundaries:
 - `--source-label` defaults to `--source`, which can expose a Windows window title in request metadata and logs; use an explicit neutral label while [Issue #8](https://github.com/Capslockb/video-frame-feeder/issues/8) remains open;
 - `--once` can exit successfully after HTTP failure or bridge rejection, so its process status is not delivery evidence; see [Issue #6](https://github.com/Capslockb/video-frame-feeder/issues/6);
 - `--force` does not safely merge an endpoint's existing query string; use a query-free endpoint while [Issue #9](https://github.com/Capslockb/video-frame-feeder/issues/9) remains open;
-- capture dimensions and interval values are not fully validated; keep dimensions positive and the interval finite while [Issue #10](https://github.com/Capslockb/video-frame-feeder/issues/10) remains open; and
-- filter-threshold ranges are documented but not enforced; see [Issue #5](https://github.com/Capslockb/video-frame-feeder/issues/5).
+- capture dimensions and interval values are not fully validated; keep dimensions positive and the interval finite while [Issue #10](https://github.com/Capslockb/video-frame-feeder/issues/10) remains open;
+- filter-threshold ranges are documented but not enforced; see [Issue #5](https://github.com/Capslockb/video-frame-feeder/issues/5);
+- the filtered-path hash baseline advances before full-frame capture and bridge acceptance, so a transient failure can suppress an unchanged retry; see accepted [Issue #11](https://github.com/Capslockb/video-frame-feeder/issues/11); and
+- average hash can miss material global-brightness changes that preserve relative pixel structure; see accepted [Issue #12](https://github.com/Capslockb/video-frame-feeder/issues/12).
 
 ## Current repository status
 
@@ -41,7 +43,7 @@ The default filtering behavior is:
 --stddev-min 0        # variance filtering disabled by default
 ```
 
-`--no-content-filter` disables deduplication and sends every captured frame. It does **not** disable bridge video. To disable video acceptance, configure the receiving bridge itself, for example with its documented bridge-level video-enable setting.
+`--no-content-filter` bypasses hash and variance selection and attempts a full-frame capture and delivery on every iteration. It does **not** remove the thumbnail FFmpeg capture step, guarantee bridge acceptance, or disable bridge video. To disable video acceptance, configure the receiving bridge itself, for example with its documented bridge-level video-enable setting.
 
 If thumbnail capture fails, the feeder falls back to full-frame capture and a delivery attempt instead of silently stopping.
 
@@ -116,6 +118,8 @@ Each pixel is compared with the thumbnail mean to produce a 64-bit average hash.
 
 A frame is skipped when its distance is lower than `--min-change`.
 
+Because the comparison is relative to each thumbnail's own mean, the hash is not luminance-complete. Uniform black, gray, and white thumbnails all produce the same zero hash, and a material brightness shift that preserves relative pixel ordering can preserve the full hash. Until [Issue #12](https://github.com/Capslockb/video-frame-feeder/issues/12) is implemented through reviewed executable work, use `--no-content-filter` when blank-screen, lock-screen, theme, or large luminance transitions must always be offered to the bridge.
+
 ### Optional uniform-frame filter
 
 `--stddev-min` rejects thumbnails whose pixel standard deviation is below the configured threshold.
@@ -125,6 +129,8 @@ This is disabled by default because an 8×8 thumbnail is too coarse to safely di
 ### Failure behavior
 
 Thumbnail-pipeline failure must not cause a permanent blackout. The implementation logs the failure, captures the full frame, and attempts delivery without content analysis for that iteration.
+
+In the ordinary filtered path, the implementation currently stores a selected hash before full-frame capture and before the bridge reports `accepted: true`. Full-frame capture failure, HTTP or JSON failure, and bridge rejection can therefore leave unchanged content ineligible for the next attempt. Accepted [Issue #11](https://github.com/Capslockb/video-frame-feeder/issues/11) requires the complete selected signature to remain pending until successful bridge acceptance.
 
 ## Current CLI reference
 
@@ -244,7 +250,8 @@ The proposal described a Discord command accepting an attachment. The shipped up
 - Keep capture dimensions positive and use a finite interval value until Issue #10 is resolved.
 - Verify the selected display, region, or window before continuous capture.
 - Use `--force` only when requesting forced acceptance is intentional, keep the endpoint query-free until Issue #9 is resolved, and verify that the receiving bridge recognizes the parameter.
-- Use `--no-content-filter` only when sending every captured frame is intentional.
+- Use `--no-content-filter` when materially different global-luminance transitions must always be offered, or when sending every captured scene change is otherwise intentional.
+- Treat filtered-path delivery failures as potentially suppressing an unchanged retry until Issue #11 is resolved.
 - Reverify all external platform, API, model, and pricing claims before production use.
 
 ## Source-of-truth hierarchy
