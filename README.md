@@ -126,6 +126,7 @@ This tool captures visible screen content and transmits it to the configured end
 
 - close or hide secrets, private messages, credentials, and personal data;
 - keep the bridge endpoint on localhost or a trusted private network;
+- use a direct, stable endpoint that does not redirect; the current HTTP client follows redirects, and a 307 or 308 response can resend the captured JPEG to the redirect target until [Issue #14](https://github.com/Capslockb/video-frame-feeder/issues/14) is resolved;
 - do not expose an unauthenticated `/frame` endpoint publicly;
 - do not place credentials in the endpoint URL or command line, and do not disable bridge authentication to work around the feeder's current lack of authentication-header support;
 - verify the selected display, region, or window before continuous capture;
@@ -146,6 +147,7 @@ This repository does not currently declare a software license. Do not assume per
 - A rejected bridge response is logged but does not stop continuous capture.
 - `--once` currently returns a successful process status when capture succeeds even if delivery fails or the bridge rejects the frame. Do not use its exit code as a delivery health check until [Issue #6](https://github.com/Capslockb/video-frame-feeder/issues/6) is resolved.
 - Successful HTTP responses are not schema-validated. A non-object JSON response can currently terminate the feeder, while a truthy non-boolean `accepted` value can be miscounted as success. Use only a bridge known to return a JSON object with a literal boolean `accepted` field until [Issue #13](https://github.com/Capslockb/video-frame-feeder/issues/13) is resolved.
+- Frame uploads currently follow HTTP redirects. A redirect response can move the JPEG beyond the explicitly configured endpoint, and the final response does not prove that the configured bridge handled it directly. Use a non-redirecting endpoint until [Issue #14](https://github.com/Capslockb/video-frame-feeder/issues/14) is resolved.
 - Authenticated frame endpoints are not supported until [Issue #7](https://github.com/Capslockb/video-frame-feeder/issues/7) is resolved.
 - `--force` adds a request parameter but does not guarantee that the receiving endpoint recognizes or honors it. It also does not safely preserve an endpoint's existing query string; use a query-free endpoint until [Issue #9](https://github.com/Capslockb/video-frame-feeder/issues/9) is resolved.
 - Capture dimensions and interval values are not fully validated. Keep width and height positive, and use a finite interval value; `nan` or infinite intervals can fail only after the first continuous-mode iteration. The parser fix is tracked in [Issue #10](https://github.com/Capslockb/video-frame-feeder/issues/10).
