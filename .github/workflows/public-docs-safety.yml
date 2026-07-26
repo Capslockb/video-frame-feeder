@@ -20,6 +20,8 @@ jobs:
   public-docs-safety:
     name: public-docs-safety
     runs-on: ubuntu-latest
+    env:
+      GITHUB_EVENT_BEFORE: ${{ github.event.before }}
     steps:
       - uses: actions/checkout@v4
         with:
