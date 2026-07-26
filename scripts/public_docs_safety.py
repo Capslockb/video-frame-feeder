@@ -86,29 +86,54 @@ def changed_added_lines(files: list[str]) -> dict[str, set[int]] | None:
     return out
 
 
-def scan_file(path: str, line_numbers) -> list[tuple[str, int, str]]:
+def scan_text(path: str, line_number: int, text: str) -> list[tuple[str, int, str]]:
     findings = []
+    quoted_example = bool(re.search(r'"[^"]*(ignore|disregard|override|reveal|show me your system prompt)[^"]*"', text, re.I))
+    human_guidance = bool(re.search(r"(?i)(contributor'?s? (PR|pull request)|merge via (github|the )|so they get credit|always merge|never close a contributor)", text))
+    for rule_id, rx in RULES:
+        if not rx.search(text):
+            continue
+        if rule_id in {"PDS001", "PDS002"} and quoted_example:
+            continue
+        if rule_id == "PDS003" and (human_guidance or BENIGN_PRODUCT.search(text)):
+            continue
+        findings.append((path, line_number, rule_id))
+    if UNCERTAIN.search(text) and not BENIGN_UNCERTAIN.search(text) and not human_guidance:
+        findings.append((path, line_number, "PDS005"))
+    return findings
+
+
+def scan_file(path: str, line_numbers) -> list[tuple[str, int, str]]:
     try:
         lines = Path(path).read_text(encoding="utf-8", errors="ignore").splitlines()
     except Exception:
         return [(path, 1, "PDS_READ_ERROR")]
-    for i in line_numbers:
-        if i < 1 or i > len(lines):
-            continue
-        line = lines[i - 1]
-        quoted_example = bool(re.search(r'"[^"]*(ignore|disregard|override|reveal|show me your system prompt)[^"]*"', line, re.I))
-        human_guidance = bool(re.search(r"(?i)(contributor'?s? (PR|pull request)|merge via (github|the )|so they get credit|always merge|never close a contributor)", line))
-        for rule_id, rx in RULES:
-            if not rx.search(line):
+
+    selected = {i for i in line_numbers if 1 <= i <= len(lines)}
+    findings = set()
+
+    for i in selected:
+        findings.update(scan_text(path, i, lines[i - 1]))
+
+    # Scan bounded windows inside one Markdown paragraph so line wrapping cannot
+    # split a risky phrase across physical lines. The window is deliberately
+    # capped at three non-empty lines to avoid joining unrelated sections.
+    for start in range(len(lines)):
+        for size in (2, 3):
+            end = start + size
+            if end > len(lines):
                 continue
-            if rule_id in {"PDS001", "PDS002"} and quoted_example:
+            window_lines = lines[start:end]
+            if any(not line.strip() for line in window_lines):
                 continue
-            if rule_id == "PDS003" and (human_guidance or BENIGN_PRODUCT.search(line)):
+            window_numbers = set(range(start + 1, end + 1))
+            touched = selected & window_numbers
+            if not touched:
                 continue
-            findings.append((path, i, rule_id))
-        if UNCERTAIN.search(line) and not BENIGN_UNCERTAIN.search(line) and not human_guidance:
-            findings.append((path, i, "PDS005"))
-    return findings
+            text = " ".join(line.strip() for line in window_lines)
+            findings.update(scan_text(path, min(touched), text))
+
+    return sorted(findings, key=lambda item: (item[1], item[2]))
 
 
 def main() -> int:
@@ -137,6 +162,7 @@ def main() -> int:
         return 1
     print("public-docs-safety: PASS")
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())
