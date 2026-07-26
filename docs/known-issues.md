@@ -56,6 +56,14 @@ Modern Requests releases wrap JSON decoding failures in `requests.exceptions.JSO
 
 Until [Issue #13](https://github.com/Capslockb/video-frame-feeder/issues/13) is resolved through reviewed HTTP/runtime work, treat only a bridge contract known to return a JSON object with a literal boolean `accepted` field as compatible. The correction must normalize malformed shapes and wrong-type fields to bounded rejection results, avoid logging raw response bodies, preserve continuous-mode operation, and add mocked response tests for both the normal filtered path and thumbnail-fallback path. This is separate from Issue #6's one-shot exit-code policy.
 
+## HTTP failure reasons can expose endpoint and query metadata
+
+`post_frame()` currently returns the raw Requests exception text in `reason`, and both delivery paths print that value. Requests exception strings commonly include the request URL, so routine failure output can reproduce the configured endpoint, existing query parameters, `force=true`, the URL-encoded `source` label, or a followed redirect target.
+
+This is especially sensitive while `--source-label` defaults to `--source`: a Windows window title can enter the request URL and then reappear in an HTTP error. A mistakenly configured credential-bearing URL can also be echoed even though credentials in URLs are unsupported and explicitly discouraged.
+
+Until [Issue #15](https://github.com/Capslockb/video-frame-feeder/issues/15) is resolved through reviewed HTTP/privacy work, keep endpoint query values and source labels non-sensitive, keep console output private, and do not publish raw feeder failure logs. The correction must replace raw exception text with stable bounded reason codes, include at most a numeric HTTP status where useful, redact URLs, queries, redirect locations, response bodies, and frame data, and add mocked stdout/stderr tests with sensitive sentinel values. This remains separate from Issues #8, #9, #13, and #14.
+
 ## Failed filtered deliveries can suppress the next retry
 
 In the normal filtered path, the feeder stores the selected thumbnail hash before full-frame capture and before the bridge accepts the request. If full-frame capture fails, the HTTP request fails, or the bridge returns `accepted: false`, the hash still advances.
