@@ -40,7 +40,9 @@ In the normal filtered path, the feeder stores the selected thumbnail hash befor
 
 On the next iteration, the same visible content can therefore be classified as unchanged and skipped even though it was never delivered successfully. Delivery may not be attempted again until the screen changes enough to cross `--min-change`.
 
-This is separate from Issue #6's exit-status problem. Until [Issue #11](https://github.com/Capslockb/video-frame-feeder/issues/11) is resolved through reviewed executable work, treat transient capture or delivery failures as potentially requiring a visible screen change before the filtered path offers another frame. The smallest correction is to commit the pending hash only after an accepted delivery, with mocked tests proving that capture failures, HTTP failures, and bridge rejections leave retry eligibility intact.
+This is separate from Issue #6's exit-status problem. Until [Issue #11](https://github.com/Capslockb/video-frame-feeder/issues/11) is resolved through reviewed executable work, treat transient capture or delivery failures as potentially requiring a visible screen change before the filtered path offers another frame.
+
+Owner review has accepted a narrowly scoped correction: keep the selected hash pending until full-frame capture succeeds and the bridge returns `accepted: true`; only then may it replace the previous accepted hash. Full-capture failure, HTTP or JSON failure, and `accepted: false` must leave identical content eligible for the next attempt. Preserve thumbnail-failure fallback, filtering thresholds, capture paths, and continuous-mode non-termination. Deterministic mocked tests must cover accepted delivery, each failure path, same-content retry, and later changed content. No executable correction or exact-head CI evidence is present yet.
 
 ## Authenticated frame endpoints are not supported
 
