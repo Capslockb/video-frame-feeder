@@ -14,6 +14,7 @@ DOC_DIR_PARTS = {"docs", "doc", "website", "site", "public", "docs-site"}
 FIXTURE_PARTS = {"tests", "fixtures", "public-docs"}
 DOC_EXTS = {".md", ".mdx", ".rst", ".txt", ".html", ".htm"}
 EXCLUDE_PARTS = {"i18n", "CHANGELOG.md", "sessions", "vendor", "node_modules", ".git", "__pycache__", ".pytest_cache"}
+ZERO_SHA = "0" * 40
 
 RULES = [
     ("PDS001", re.compile(r"(?i)\b(ignore|disregard|override)\b.{0,100}\b(previous|above|system|developer|policy|instruction)s?\b")),
@@ -23,7 +24,6 @@ RULES = [
 ]
 UNCERTAIN = re.compile(r"(?i)\b(maintaining model|automation agent|autonomous maintainer|repository bot)\b.{0,100}\b(must|shall|required to|always|never|use tool|run command|obey|ignore|stop when|final status)\b")
 BENIGN_UNCERTAIN = re.compile(r"(?i)\b(example|sample|template|user-facing|configuration|API|worker thread|service worker|inference|event loop|model name|route|provider|guardrail|security policy|documentation)\b")
-BENIGN_PRODUCT = re.compile(r"(?i)\b(sponsor|sponsorship|release pipeline|reviews? every pull request|security|configuration|configured|deploy|deployment|feature flag|environment variable|env var|health check|migration|healthcheck|provider override|combo|compact_prompt|system prompt used during compaction|auth token|credential|locale|CI pipeline|quality gate|merge|pull request|token validation|instance)\b")
 
 
 def default_branch() -> str:
@@ -34,6 +34,17 @@ def default_branch() -> str:
     if p.returncode == 0 and "/" in p.stdout:
         return p.stdout.strip().rsplit("/", 1)[-1]
     return "main"
+
+
+def diff_base() -> str:
+    if os.environ.get("GITHUB_EVENT_NAME") == "push":
+        before = os.environ.get("GITHUB_EVENT_BEFORE", "").strip()
+        if before and before != ZERO_SHA:
+            return before
+        p = subprocess.run(["git", "rev-parse", "HEAD^"], text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+        if p.returncode == 0 and p.stdout.strip():
+            return p.stdout.strip()
+    return f"origin/{default_branch()}"
 
 
 def is_public_doc(path: str, include_fixtures: bool = False) -> bool:
@@ -49,8 +60,7 @@ def is_public_doc(path: str, include_fixtures: bool = False) -> bool:
 
 
 def changed_files() -> list[str]:
-    base = default_branch()
-    p = subprocess.run(["git", "diff", "--name-only", "--diff-filter=ACMRT", f"origin/{base}...HEAD"], text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    p = subprocess.run(["git", "diff", "--name-only", "--diff-filter=ACMRT", f"{diff_base()}...HEAD"], text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     if p.returncode == 0:
         return p.stdout.splitlines()
     p = subprocess.run(["git", "diff", "--name-only", "--diff-filter=ACMRT", "--cached"], text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
@@ -62,8 +72,7 @@ def changed_files() -> list[str]:
 def changed_added_lines(files: list[str]) -> dict[str, set[int]] | None:
     if not files:
         return {}
-    base = default_branch()
-    p = subprocess.run(["git", "diff", "--unified=0", "--diff-filter=ACMRT", f"origin/{base}...HEAD", "--", *files], text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    p = subprocess.run(["git", "diff", "--unified=0", "--diff-filter=ACMRT", f"{diff_base()}...HEAD", "--", *files], text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     if p.returncode != 0:
         return None
     out: dict[str, set[int]] = {}
@@ -86,19 +95,36 @@ def changed_added_lines(files: list[str]) -> dict[str, set[int]] | None:
     return out
 
 
+def mask_quoted_text(text: str) -> str:
+    chars = list(text)
+    start = None
+    escaped = False
+    for index, char in enumerate(text):
+        if char == "\\" and not escaped:
+            escaped = True
+            continue
+        if char == '"' and not escaped:
+            if start is None:
+                start = index
+            else:
+                for position in range(start, index + 1):
+                    chars[position] = " "
+                start = None
+        escaped = False
+    return "".join(chars)
+
+
 def scan_text(path: str, line_number: int, text: str) -> list[tuple[str, int, str]]:
     findings = []
-    quoted_example = bool(re.search(r'"[^"]*(ignore|disregard|override|reveal|show me your system prompt)[^"]*"', text, re.I))
-    human_guidance = bool(re.search(r"(?i)(contributor'?s? (PR|pull request)|merge via (github|the )|so they get credit|always merge|never close a contributor)", text))
+    unquoted = mask_quoted_text(text)
+    human_guidance = bool(re.search(r"(?i)(contributor'?s? (PR|pull request)|merge via (github|the )|so they get credit|always merge|never close a contributor)", unquoted))
     for rule_id, rx in RULES:
-        if not rx.search(text):
+        if not rx.search(unquoted):
             continue
-        if rule_id in {"PDS001", "PDS002"} and quoted_example:
-            continue
-        if rule_id == "PDS003" and (human_guidance or BENIGN_PRODUCT.search(text)):
+        if rule_id == "PDS003" and human_guidance:
             continue
         findings.append((path, line_number, rule_id))
-    if UNCERTAIN.search(text) and not BENIGN_UNCERTAIN.search(text) and not human_guidance:
+    if UNCERTAIN.search(unquoted) and not BENIGN_UNCERTAIN.search(unquoted) and not human_guidance:
         findings.append((path, line_number, "PDS005"))
     return findings
 
