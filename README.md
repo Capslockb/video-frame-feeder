@@ -131,7 +131,8 @@ This tool captures visible screen content and transmits it to the configured end
 - do not place credentials in the endpoint URL or command line, and do not disable bridge authentication to work around the feeder's current lack of authentication-header support;
 - verify the selected display, region, or window before continuous capture;
 - remember that `--source-label` currently defaults to `--source`: when a Windows window title is used as the capture source, that title is printed locally and sent as URL query metadata. Supply an explicit neutral label until [Issue #8](https://github.com/Capslockb/video-frame-feeder/issues/8) is resolved;
-- keep feeder failure output private: raw HTTP exception text can currently reproduce endpoint URLs, query parameters, source-label metadata, or redirect targets until [Issue #15](https://github.com/Capslockb/video-frame-feeder/issues/15) is resolved.
+- keep feeder failure output private: raw HTTP exception text can currently reproduce endpoint URLs, query parameters, source-label metadata, or redirect targets until [Issue #15](https://github.com/Capslockb/video-frame-feeder/issues/15) is resolved;
+- keep routine startup output private as well: it currently prints the complete endpoint, raw capture source, effective source label, and FFmpeg command prefixes. On Windows, this can reproduce a selected window title even when a neutral `--source-label` is supplied. The redaction work is tracked in [Issue #17](https://github.com/Capslockb/video-frame-feeder/issues/17).
 
 The feeder only supplies the `source` query parameter. Whether that value is retained in bridge, proxy, webhook, or telemetry logs depends on the receiving deployment.
 
