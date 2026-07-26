@@ -22,8 +22,9 @@ Additional current boundaries:
 - filter-threshold ranges are documented but not enforced; see [Issue #5](https://github.com/Capslockb/video-frame-feeder/issues/5);
 - the filtered-path hash baseline advances before full-frame capture and bridge acceptance, so a transient failure can suppress an unchanged retry; see accepted [Issue #11](https://github.com/Capslockb/video-frame-feeder/issues/11);
 - average hash can miss material global-brightness changes that preserve relative pixel structure; see accepted [Issue #12](https://github.com/Capslockb/video-frame-feeder/issues/12);
-- successful HTTP responses are not schema-validated: non-object JSON can terminate the loop, while a truthy non-boolean `accepted` value can be miscounted as success; see accepted [Issue #13](https://github.com/Capslockb/video-frame-feeder/issues/13); and
-- frame POSTs follow redirects, so HTTP 307 or 308 can resend the captured JPEG beyond the configured endpoint; use a direct non-redirecting endpoint while accepted [Issue #14](https://github.com/Capslockb/video-frame-feeder/issues/14) remains open.
+- successful HTTP responses are not schema-validated: non-object JSON can terminate the loop, while a truthy non-boolean `accepted` value can be miscounted as success; see accepted [Issue #13](https://github.com/Capslockb/video-frame-feeder/issues/13);
+- frame POSTs follow redirects, so HTTP 307 or 308 can resend the captured JPEG beyond the configured endpoint; use a direct non-redirecting endpoint while accepted [Issue #14](https://github.com/Capslockb/video-frame-feeder/issues/14) remains open; and
+- routine HTTP failure output can reproduce endpoint URLs, query metadata, source labels, and followed redirect targets; keep raw feeder logs private while accepted [Issue #15](https://github.com/Capslockb/video-frame-feeder/issues/15) remains open.
 
 ## Current repository status
 
@@ -68,6 +69,8 @@ The feeder enforces a minimum one-second interval for ordinary finite values. Th
 A successful HTTP status is not sufficient delivery evidence. The current feeder assumes the decoded response is an object and treats any truthy `accepted` value as success. Until Issue #13 is resolved, use only a bridge known to return a JSON object with a literal boolean `accepted` field; malformed or wrong-type responses can otherwise crash the feeder or corrupt delivery statistics.
 
 The current HTTP client also follows redirects. In particular, a 307 or 308 can resend the JPEG body to the redirect target, and the final response does not prove that the explicitly configured bridge handled the frame. Until Issue #14 is resolved, use a direct stable non-redirecting endpoint on loopback or a trusted private network.
+
+HTTP failures currently preserve and print raw Requests exception text. Depending on the failure, that text can contain the configured endpoint, existing or generated query parameters, source-label metadata, or a followed redirect target. Until Issue #15 is resolved, keep feeder failure output private and do not use secret-bearing endpoint URLs or labels.
 
 ### Hermes `voice_live_frame` tool
 
@@ -241,6 +244,7 @@ The proposal described a Discord command accepting an attachment. The shipped up
 | Thumbnail failure fallback | Shipped | Falls through to full capture |
 | Bridge response-schema validation | Not implemented | Require an object with literal boolean `accepted`; tracked in Issue #13 |
 | Redirect rejection | Not implemented | Use a direct non-redirecting endpoint; tracked in Issue #14 |
+| HTTP failure redaction | Not implemented | Keep feeder failure output private; tracked in Issue #15 |
 | `mediaResolution: "LOW"` | Rejected and removed | Do not use without fresh verification |
 | Turn-coverage override | Reported already present upstream | Verify against current bridge/API |
 | Video token-budget counter | Not implemented | Use capture and bridge gating plus measured usage |
@@ -256,6 +260,7 @@ The proposal described a Discord command accepting an attachment. The shipped up
 - Do not publicly expose an unauthenticated frame-ingestion endpoint.
 - Do not put credentials in endpoint URLs or command-line arguments.
 - Supply an explicit neutral `--source-label` when the capture source itself contains sensitive context.
+- Keep raw feeder failure output private until Issue #15 is resolved; exception text can include URLs, query metadata, source labels, or redirect targets.
 - Keep capture dimensions positive and use a finite interval value until Issue #10 is resolved.
 - Verify the selected display, region, or window before continuous capture.
 - Use `--force` only when requesting forced acceptance is intentional, keep the endpoint query-free until Issue #9 is resolved, and verify that the receiving bridge recognizes the parameter.
