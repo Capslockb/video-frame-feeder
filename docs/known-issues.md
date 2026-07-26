@@ -18,6 +18,16 @@ Out-of-range values can silently change behavior: a `--min-change` value above 6
 
 Until argument validation is implemented through reviewed executable work, keep `--min-change` within 0–64 and `--stddev-min` within 0–255. The implementation task is tracked in [Issue #5](https://github.com/Capslockb/video-frame-feeder/issues/5) so it does not become entangled with the startup fix.
 
+## Average-hash filtering can miss global brightness changes
+
+The current average hash records whether each thumbnail pixel is above that thumbnail's own mean. Uniform black, gray, and white thumbnails therefore produce the same all-zero hash, and a global brightness shift that preserves relative pixel ordering can also preserve the hash.
+
+Because `--stddev-min` defaults to `0`, uniform-frame filtering is disabled by default. After one uniform or structurally identical thumbnail is selected, a visibly different dark/light, blank-screen, lock-screen, or theme transition can therefore be classified as unchanged under the default `--min-change 2` threshold.
+
+Until [Issue #12](https://github.com/Capslockb/video-frame-feeder/issues/12) is resolved through a separately reviewed filtering change, use `--no-content-filter` when material global-luminance transitions must always be offered to the bridge. This increases full-frame generation and delivery attempts. Do not assume that lowering `--min-change` preserves the existing filtering contract without separately validating the exact value and workload.
+
+The correcting PR must add a reviewed luminance-sensitive signal or another deterministic equivalent, preserve genuinely unchanged-frame suppression and `--no-content-filter`, and include synthetic-thumbnail tests for black-to-white, dark-to-light, identical frames, structural changes, and threshold boundaries. No executable correction or exact-head CI evidence is present yet.
+
 ## Capture dimensions and interval values are not fully validated
 
 The parser currently accepts zero or negative `--width` and `--height` values and passes them to FFmpeg, where they fail only during capture. It also accepts non-finite floating-point interval values.
