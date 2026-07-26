@@ -52,6 +52,8 @@ After a successful HTTP status, `post_frame()` returns the decoded JSON value un
 
 A valid 2xx response whose top-level JSON value is `null`, a list, string, number, or boolean can therefore raise `AttributeError` and terminate continuous mode. A mapping with a truthy non-boolean value such as `{"accepted": "false"}` can instead be counted and logged as a successful delivery.
 
+Modern Requests releases wrap JSON decoding failures in `requests.exceptions.JSONDecodeError`, which inherits from `RequestException` and is caught by the current handler. The repository does not declare a minimum Requests version, however, so the correcting implementation should still normalize JSON-decode failure explicitly rather than relying on dependency-version-specific exception inheritance.
+
 Until [Issue #13](https://github.com/Capslockb/video-frame-feeder/issues/13) is resolved through reviewed HTTP/runtime work, treat only a bridge contract known to return a JSON object with a literal boolean `accepted` field as compatible. The correction must normalize malformed shapes and wrong-type fields to bounded rejection results, avoid logging raw response bodies, preserve continuous-mode operation, and add mocked response tests for both the normal filtered path and thumbnail-fallback path. This is separate from Issue #6's one-shot exit-code policy.
 
 ## Failed filtered deliveries can suppress the next retry
@@ -87,3 +89,11 @@ The current force path appends `?force=true` directly to the configured endpoint
 Until the accepted HTTP correction in [Issue #9](https://github.com/Capslockb/video-frame-feeder/issues/9) is implemented, use a query-free endpoint whenever `--force` is enabled. Do not put credentials in endpoint query parameters.
 
 Owner review has accepted rebuilding the request URL with standard URL/query utilities so existing non-secret parameters survive and optional `force` and `source` values are added as distinct, exactly-once-encoded parameters. Mocked tests must cover existing queries, blank and duplicate values, encoded labels, force-disabled behavior, and fragments without changing capture, filtering, authentication, dependencies, CI, or release behavior. No corrective commit or exact-head test evidence is present yet.
+
+## Frame POST redirects can cross the configured endpoint trust boundary
+
+`requests.post()` follows redirects by default. The current feeder does not disable that behavior. In particular, HTTP 307 and 308 responses preserve the POST method and body, so the captured JPEG can be resent to the redirect target rather than being processed only by the configured bridge endpoint.
+
+Until [Issue #14](https://github.com/Capslockb/video-frame-feeder/issues/14) is resolved through reviewed HTTP/media-delivery work, use a direct stable endpoint that does not redirect and keep it on loopback or a trusted private network. Do not treat the final success response as proof that the configured endpoint itself accepted the frame.
+
+The safe correction is to disable automatic redirects for frame uploads and normalize every 3xx response as a bounded rejection without logging the raw `Location` value. Mocked tests must cover 301, 302, 303, 307, and 308, prove that no second request receives the JPEG body, preserve Issue #13 response normalization, and preserve Issue #11 retry eligibility. No executable correction or exact-head CI evidence is present yet.
