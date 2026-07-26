@@ -93,7 +93,7 @@ If thumbnail capture fails, the feeder falls back to a full-frame capture and de
 
 ```text
 --min-change N        Intended Hamming-distance range 0–64; default 2
---stddev-min F        Intended thumbnail standard-deviation range 0–255; default 0
+--stddev-min F        Intended finite thumbnail standard-deviation range 0–255; default 0
 --no-content-filter   Disable hash and variance filtering
 --source-label TEXT   URL-encoded as the bridge's `source` query parameter;
                       currently defaults to `--source`
@@ -103,7 +103,7 @@ If thumbnail capture fails, the feeder falls back to a full-frame capture and de
 
 Average hash compares each pixel with the mean of its own thumbnail, so materially different frames can share the same hash when only their overall brightness changes. Uniform black, gray, and white thumbnails all produce the same all-zero hash. Use `--no-content-filter` when blank-screen, lock-screen, theme, or large luminance transitions must always be offered to the bridge until [Issue #12](https://github.com/Capslockb/video-frame-feeder/issues/12) is resolved.
 
-The parser does not currently reject out-of-range filter thresholds. Keep both values within the documented ranges until [Issue #5](https://github.com/Capslockb/video-frame-feeder/issues/5) is resolved.
+The parser does not currently reject out-of-range thresholds or non-finite `--stddev-min` values. Keep `--min-change` within 0–64 and use a finite `--stddev-min` within 0–255 until [Issue #5](https://github.com/Capslockb/video-frame-feeder/issues/5) is resolved. In particular, `nan` silently disables the standard-deviation check because comparisons with NaN are false.
 
 ## Important options
 
@@ -148,6 +148,7 @@ This repository does not currently declare a software license. Do not assume per
 - Authenticated frame endpoints are not supported until [Issue #7](https://github.com/Capslockb/video-frame-feeder/issues/7) is resolved.
 - `--force` adds a request parameter but does not guarantee that the receiving endpoint recognizes or honors it. It also does not safely preserve an endpoint's existing query string; use a query-free endpoint until [Issue #9](https://github.com/Capslockb/video-frame-feeder/issues/9) is resolved.
 - Capture dimensions and interval values are not fully validated. Keep width and height positive, and use a finite interval value; `nan` or infinite intervals can fail only after the first continuous-mode iteration. The parser fix is tracked in [Issue #10](https://github.com/Capslockb/video-frame-feeder/issues/10).
+- Content-filter thresholds are not fully validated. Keep `--min-change` within 0–64 and `--stddev-min` finite and within 0–255; `nan` currently bypasses the standard-deviation filter. The parser fix is tracked in [Issue #5](https://github.com/Capslockb/video-frame-feeder/issues/5).
 - In the filtered path, the current hash baseline advances before full-frame capture and bridge acceptance. A transient capture failure, HTTP or JSON failure, or `accepted: false` response can therefore suppress the next unchanged frame until the screen changes enough to cross `--min-change`. The accepted correction is tracked in [Issue #11](https://github.com/Capslockb/video-frame-feeder/issues/11).
 - The repository currently has no automated CI checks.
 
