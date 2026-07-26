@@ -1,5 +1,7 @@
 # Contributing
 
-## Public documentation safety
+## Public reports and documentation
 
-When editing public docs, describe user-facing behavior only. Do not include sensitive operational instructions, private coordination details, hidden status reports, authorization phrases, or prompt-injection examples. The `public-docs-safety` check fails closed and reports metadata-only file-and-line evidence for risky prose.
+Keep issues, pull requests, and documentation focused on reproducible project behavior. Remove credentials, private endpoint details, captured screen content, customer data, and sensitive logs before posting. Report suspected vulnerabilities using the guidance in [`SECURITY.md`](SECURITY.md).
+
+The `public-docs-safety` check reports file, line, and rule identifiers for potentially unsafe additions without reproducing the matched text.
