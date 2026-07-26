@@ -57,7 +57,7 @@ http://127.0.0.1:18943/frame
 
 The endpoint can be overridden with `--endpoint` or `VOICE_BRIDGE_FRAME_URL`.
 
-When `--force` is enabled, the current implementation appends `?force=true` directly. An endpoint that already contains query parameters can therefore become malformed. Keep forced endpoints query-free until Issue #9 is fixed, and never place credentials in endpoint query strings.
+When `--force` is enabled, the current implementation appends `?force=true` directly. This repository only constructs that request; whether the receiving endpoint recognizes the parameter or changes any gate is outside the feeder's control. An endpoint that already contains query parameters can become malformed. Keep forced endpoints query-free until Issue #9 is fixed, never place credentials in endpoint query strings, and verify the receiving bridge contract before relying on forced acceptance.
 
 The feeder enforces a minimum one-second interval for ordinary finite values. The receiving bridge may apply additional FPS, MIME-type, size, recent-audio, user-presence, or enable/disable gates. Non-finite interval values are not currently rejected and can fail at the continuous-mode sleep boundary.
 
@@ -136,7 +136,7 @@ Thumbnail-pipeline failure must not cause a permanent blackout. The implementati
 --width / --height    Positive capture dimensions expected; defaults to 768×768
 --x / --y             Linux screen-region offset
 --display DISPLAY     Linux X11 display
---force               Bypass the bridge's recent-audio gate
+--force               Add force=true to the request; bridge behavior is endpoint-defined
 --once                Run one capture attempt and exit
 --min-change N        Hamming-distance threshold, 0–64; default 2
 --stddev-min F        Thumbnail pixel standard-deviation threshold; default 0
@@ -199,7 +199,7 @@ For budgeting:
 1. check the current official model and pricing pages;
 2. measure accepted frames after bridge gating;
 3. test the exact model and API version;
-4. treat `--force` and `--no-content-filter` as potentially cost-increasing options.
+4. treat `--force` and `--no-content-filter` as potentially cost-increasing options when the receiving bridge honors them.
 
 ## Historical alternatives considered
 
@@ -243,7 +243,7 @@ The proposal described a Discord command accepting an attachment. The shipped up
 - Supply an explicit neutral `--source-label` when the capture source itself contains sensitive context.
 - Keep capture dimensions positive and use a finite interval value until Issue #10 is resolved.
 - Verify the selected display, region, or window before continuous capture.
-- Use `--force` only when bypassing recent-audio gating is intentional, and keep the endpoint query-free until Issue #9 is resolved.
+- Use `--force` only when requesting forced acceptance is intentional, keep the endpoint query-free until Issue #9 is resolved, and verify that the receiving bridge recognizes the parameter.
 - Use `--no-content-filter` only when sending every captured frame is intentional.
 - Reverify all external platform, API, model, and pricing claims before production use.
 
