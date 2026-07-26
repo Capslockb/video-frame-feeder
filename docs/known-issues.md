@@ -34,6 +34,14 @@ The process exit status currently reflects capture errors only. In `--once` mode
 
 Do not use the current `--once` exit code as proof that a frame reached or was accepted by the bridge. The executable transport/lifecycle fix and required exit-semantics decision are tracked in [Issue #6](https://github.com/Capslockb/video-frame-feeder/issues/6). Continuous mode is expected to keep logging delivery failures without terminating unless the owner chooses a different policy.
 
+## Failed filtered deliveries can suppress the next retry
+
+In the normal filtered path, the feeder stores the selected thumbnail hash before full-frame capture and before the bridge accepts the request. If full-frame capture fails, the HTTP request fails, or the bridge returns `accepted: false`, the hash still advances.
+
+On the next iteration, the same visible content can therefore be classified as unchanged and skipped even though it was never delivered successfully. Delivery may not be attempted again until the screen changes enough to cross `--min-change`.
+
+This is separate from Issue #6's exit-status problem. Until [Issue #11](https://github.com/Capslockb/video-frame-feeder/issues/11) is resolved through reviewed executable work, treat transient capture or delivery failures as potentially requiring a visible screen change before the filtered path offers another frame. The smallest correction is to commit the pending hash only after an accepted delivery, with mocked tests proving that capture failures, HTTP failures, and bridge rejections leave retry eligibility intact.
+
 ## Authenticated frame endpoints are not supported
 
 The feeder currently sends only an `image/jpeg` content-type header. It has no supported API-secret, bearer-token, or configurable authentication header, so it cannot deliver frames to a bridge that requires authenticated `/frame` requests.
