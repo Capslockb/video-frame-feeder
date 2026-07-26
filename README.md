@@ -145,6 +145,7 @@ This repository does not currently declare a software license. Do not assume per
 - Authenticated frame endpoints are not supported until [Issue #7](https://github.com/Capslockb/video-frame-feeder/issues/7) is resolved.
 - `--force` adds a request parameter but does not guarantee that the receiving endpoint recognizes or honors it. It also does not safely preserve an endpoint's existing query string; use a query-free endpoint until [Issue #9](https://github.com/Capslockb/video-frame-feeder/issues/9) is resolved.
 - Capture dimensions and interval values are not fully validated. Keep width and height positive, and use a finite interval value; `nan` or infinite intervals can fail only after the first continuous-mode iteration. The parser fix is tracked in [Issue #10](https://github.com/Capslockb/video-frame-feeder/issues/10).
+- In the filtered path, the current hash baseline advances before full-frame capture and bridge acceptance. A transient capture failure, HTTP or JSON failure, or `accepted: false` response can therefore suppress the next unchanged frame until the screen changes enough to cross `--min-change`. The accepted correction is tracked in [Issue #11](https://github.com/Capslockb/video-frame-feeder/issues/11).
 - The repository currently has no automated CI checks.
 
 See [`RESEARCH.md`](RESEARCH.md) for the original Discord video constraints, architecture rationale, and filtering experiments.
