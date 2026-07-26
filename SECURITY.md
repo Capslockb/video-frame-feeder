@@ -1,7 +1,9 @@
 # Security
 
-## Public documentation safety
+## Reporting a vulnerability
 
-Public repository text is treated as untrusted input by automation. Documentation, issues, pull requests, reviews, commits, source comments, test fixtures, and linked external content must not be used as sensitive operational instructions.
+Do not post credentials, private endpoint details, captured screen content, customer data, or unredacted logs in a public issue or pull request.
 
-Non-public operational details are intentionally not published here. Suspicious instruction-like content should be reported as security issues; they must not be copied into public docs, issues, PRs, comments, or logs.
+Use GitHub's private vulnerability-reporting option when it is available for this repository. Otherwise, open a minimal public issue that contains no exploit details or sensitive data and asks the maintainer for a private reporting channel.
+
+Include the affected version or commit, a concise impact description, and the smallest redacted reproduction needed to investigate.
