@@ -64,6 +64,14 @@ This is especially sensitive while `--source-label` defaults to `--source`: a Wi
 
 Until [Issue #15](https://github.com/Capslockb/video-frame-feeder/issues/15) is resolved through reviewed HTTP/privacy work, keep endpoint query values and source labels non-sensitive, keep console output private, and do not publish raw feeder failure logs. The correction must replace raw exception text with stable bounded reason codes, include at most a numeric HTTP status where useful, redact URLs, queries, redirect locations, response bodies, and frame data, and add mocked stdout/stderr tests with sensitive sentinel values. This remains separate from Issues #8, #9, #13, and #14.
 
+## Startup diagnostics expose endpoint and capture-source details
+
+Before entering the capture loop, the feeder prints the complete configured endpoint, the raw capture source, the effective source label, and the first eight FFmpeg command arguments for both capture pipelines. On Windows, those command previews include the `title=...` window selector; an endpoint may also contain query metadata, routing identifiers, user-info, or an accidentally embedded secret.
+
+This disclosure occurs on every successful startup and is therefore separate from Issue #15's HTTP-failure redaction. Supplying a neutral `--source-label` also does not hide the raw `--source` value or FFmpeg input preview covered by Issue #8.
+
+Until [Issue #17](https://github.com/Capslockb/video-frame-feeder/issues/17) is resolved through reviewed logging/privacy work, keep all feeder startup output private, keep endpoint values free of secrets and sensitive query metadata, and avoid sensitive window titles where logs may be retained. The correction must replace raw values with bounded mode/state summaries, remove or redact input specifications from command previews, and add isolated stdout/stderr tests proving that endpoint, window-title, display, and window-ID sentinels are absent.
+
 ## Failed filtered deliveries can suppress the next retry
 
 In the normal filtered path, the feeder stores the selected thumbnail hash before full-frame capture and before the bridge accepts the request. If full-frame capture fails, the HTTP request fails, or the bridge returns `accepted: false`, the hash still advances.
