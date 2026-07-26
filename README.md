@@ -101,6 +101,8 @@ If thumbnail capture fails, the feeder falls back to a full-frame capture and de
 
 `--no-content-filter` disables the hash and standard-deviation decision, but the current loop still performs the thumbnail FFmpeg capture before the full-frame capture. Use the flag to bypass frame selection, not as a way to remove thumbnail-capture overhead.
 
+Average hash compares each pixel with the mean of its own thumbnail, so materially different frames can share the same hash when only their overall brightness changes. Uniform black, gray, and white thumbnails all produce the same all-zero hash. Use `--no-content-filter` when blank-screen, lock-screen, theme, or large luminance transitions must always be offered to the bridge until [Issue #12](https://github.com/Capslockb/video-frame-feeder/issues/12) is resolved.
+
 The parser does not currently reject out-of-range filter thresholds. Keep both values within the documented ranges until [Issue #5](https://github.com/Capslockb/video-frame-feeder/issues/5) is resolved.
 
 ## Important options
@@ -140,6 +142,7 @@ This repository does not currently declare a software license. Do not assume per
 - This utility does not receive Discord camera or screenshare streams through the Discord bot API. It captures what is visible on the host operating system.
 - The feeder enforces a minimum one-second interval between capture iterations; the receiving bridge may apply additional FPS, MIME, size, activity, or user-presence gates.
 - Content filtering reduces repeated static frames but is not semantic scene detection. Small visual changes can be skipped depending on `--min-change`.
+- Average-hash filtering can also miss material global-brightness changes whose relative pixel pattern is unchanged; see [Issue #12](https://github.com/Capslockb/video-frame-feeder/issues/12).
 - A rejected bridge response is logged but does not stop continuous capture.
 - `--once` currently returns a successful process status when capture succeeds even if delivery fails or the bridge rejects the frame. Do not use its exit code as a delivery health check until [Issue #6](https://github.com/Capslockb/video-frame-feeder/issues/6) is resolved.
 - Authenticated frame endpoints are not supported until [Issue #7](https://github.com/Capslockb/video-frame-feeder/issues/7) is resolved.
