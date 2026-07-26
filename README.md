@@ -112,11 +112,11 @@ The parser does not currently reject out-of-range filter thresholds. Keep both v
 --width / --height    Positive capture dimensions; defaults to 768×768
 --x / --y             Linux screen-region offset
 --display DISPLAY     Linux X11 display
---force               Bypass the bridge's recent-audio gate
+--force               Add force=true to the request; receiving-bridge behavior varies
 --once                Run one capture attempt and exit
 ```
 
-Use `--force` deliberately: it can cause frames to be accepted even when nobody has recently spoken, increasing unnecessary model input.
+`--force` does not itself bypass any gate inside this repository. It only asks the receiving endpoint to force acceptance by adding the `force=true` query parameter. Verify the exact bridge contract before relying on that behavior. A bridge that honors the parameter may accept frames without recent audio activity, increasing unnecessary model input.
 
 ## Privacy and network safety
 
@@ -143,7 +143,7 @@ This repository does not currently declare a software license. Do not assume per
 - A rejected bridge response is logged but does not stop continuous capture.
 - `--once` currently returns a successful process status when capture succeeds even if delivery fails or the bridge rejects the frame. Do not use its exit code as a delivery health check until [Issue #6](https://github.com/Capslockb/video-frame-feeder/issues/6) is resolved.
 - Authenticated frame endpoints are not supported until [Issue #7](https://github.com/Capslockb/video-frame-feeder/issues/7) is resolved.
-- `--force` does not safely preserve an endpoint's existing query string; use a query-free endpoint until [Issue #9](https://github.com/Capslockb/video-frame-feeder/issues/9) is resolved.
+- `--force` adds a request parameter but does not guarantee that the receiving endpoint recognizes or honors it. It also does not safely preserve an endpoint's existing query string; use a query-free endpoint until [Issue #9](https://github.com/Capslockb/video-frame-feeder/issues/9) is resolved.
 - Capture dimensions and interval values are not fully validated. Keep width and height positive, and use a finite interval value; `nan` or infinite intervals can fail only after the first continuous-mode iteration. The parser fix is tracked in [Issue #10](https://github.com/Capslockb/video-frame-feeder/issues/10).
 - The repository currently has no automated CI checks.
 
