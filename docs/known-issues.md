@@ -10,13 +10,15 @@ The executable fix is tracked in [Issue #4](https://github.com/Capslockb/video-f
 
 No documentation-only change can resolve this runtime defect.
 
-## Filter thresholds are not range-validated
+## Filter thresholds are not fully validated
 
-The CLI currently accepts any integer for `--min-change` and any floating-point value for `--stddev-min`, even though the meaningful ranges are 0–64 Hamming-distance bits and 0–255 grayscale standard deviation.
+The CLI currently accepts any integer for `--min-change` and any floating-point value for `--stddev-min`, even though the meaningful ranges are 0–64 Hamming-distance bits and a **finite** 0–255 grayscale standard deviation.
 
-Out-of-range values can silently change behavior: a `--min-change` value above 64 or a `--stddev-min` value above 255 can suppress later or all frames, while negative values can effectively disable the corresponding check.
+Out-of-range values can silently change behavior: a `--min-change` value above 64 or a `--stddev-min` value above 255 can suppress later or all frames, while negative values can effectively disable the corresponding check. Non-finite values also require explicit handling: `--stddev-min nan` silently disables the standard-deviation check because comparisons with NaN are false, `inf` suppresses every valid thumbnail, and `-inf` disables the check.
 
-Until argument validation is implemented through reviewed executable work, keep `--min-change` within 0–64 and `--stddev-min` within 0–255. The implementation task is tracked in [Issue #5](https://github.com/Capslockb/video-frame-feeder/issues/5) so it does not become entangled with the startup fix.
+Until argument validation is implemented through reviewed executable work, keep `--min-change` within 0–64 and use a finite `--stddev-min` within 0–255. The implementation task is tracked in [Issue #5](https://github.com/Capslockb/video-frame-feeder/issues/5) so it does not become entangled with the startup fix.
+
+The eventual parser fix must explicitly reject NaN and positive or negative infinity rather than relying only on ordinary lower/upper-bound comparisons. Boundary tests should cover `0`, `64`, `0.0`, and `255.0`, plus negative, above-range, `nan`, `inf`, and `-inf` inputs. No executable correction or exact-head CI evidence is present yet.
 
 ## Average-hash filtering can miss global brightness changes
 
