@@ -18,7 +18,7 @@ Out-of-range values can silently change behavior: a `--min-change` value above 6
 
 Until argument validation is implemented through reviewed executable work, keep `--min-change` within 0–64 and use a finite `--stddev-min` within 0–255. The implementation task is tracked in [Issue #5](https://github.com/Capslockb/video-frame-feeder/issues/5) so it does not become entangled with the startup fix.
 
-The eventual parser fix must explicitly reject NaN and positive or negative infinity rather than relying only on ordinary lower/upper-bound comparisons. Boundary tests should cover `0`, `64`, `0.0`, and `255.0`, plus negative, above-range, `nan`, `inf`, and `-inf` inputs. No executable correction or exact-head CI evidence is present yet.
+Owner review has accepted the focused validation change. The eventual parser fix must explicitly reject NaN and positive or negative infinity rather than relying only on ordinary lower/upper-bound comparisons. Boundary tests should cover `0`, `64`, `0.0`, and `255.0`, plus negative, above-range, `nan`, `inf`, and `-inf` inputs. No executable correction or exact-head CI evidence is present yet.
 
 ## Average-hash filtering can miss global brightness changes
 
@@ -45,6 +45,14 @@ Owner review has accepted this correction for implementation. The pending code c
 The process exit status currently reflects capture errors only. In `--once` mode, an HTTP failure or a bridge response with `accepted: false` is logged, but the process can still exit with status `0` when capture itself succeeded.
 
 Do not use the current `--once` exit code as proof that a frame reached or was accepted by the bridge. The executable transport/lifecycle fix and required exit-semantics decision are tracked in [Issue #6](https://github.com/Capslockb/video-frame-feeder/issues/6). Continuous mode is expected to keep logging delivery failures without terminating unless the owner chooses a different policy.
+
+## Bridge response JSON is not schema-validated
+
+After a successful HTTP status, `post_frame()` returns the decoded JSON value unchanged. Both delivery paths then assume that value is a mapping and call `result.get("accepted")`.
+
+A valid 2xx response whose top-level JSON value is `null`, a list, string, number, or boolean can therefore raise `AttributeError` and terminate continuous mode. A mapping with a truthy non-boolean value such as `{"accepted": "false"}` can instead be counted and logged as a successful delivery.
+
+Until [Issue #13](https://github.com/Capslockb/video-frame-feeder/issues/13) is resolved through reviewed HTTP/runtime work, treat only a bridge contract known to return a JSON object with a literal boolean `accepted` field as compatible. The correction must normalize malformed shapes and wrong-type fields to bounded rejection results, avoid logging raw response bodies, preserve continuous-mode operation, and add mocked response tests for both the normal filtered path and thumbnail-fallback path. This is separate from Issue #6's one-shot exit-code policy.
 
 ## Failed filtered deliveries can suppress the next retry
 
