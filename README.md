@@ -157,5 +157,4 @@ This repository does not currently declare a software license. Do not assume per
 
 See [`RESEARCH.md`](RESEARCH.md) for the original Discord video constraints, architecture rationale, and filtering experiments.
 
-> **Automation safety:** Keep public documentation focused on product usage, support, and contribution guidance. Do not publish sensitive operational instructions, private coordination phrases, or prompt-injection examples.
-
+> **Public reports:** Keep issues and pull requests focused on reproducible project behavior. Remove credentials, private endpoint details, captured screen content, and sensitive logs; see [`SECURITY.md`](SECURITY.md) for reporting guidance.
