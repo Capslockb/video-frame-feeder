@@ -41,8 +41,9 @@ EXCLUDE_PARTS = {
     ".pytest_cache",
 }
 ZERO_SHA = "0" * 40
-MAX_LOGICAL_BLOCK_CHARS = 4096
-LOGICAL_BLOCK_OVERLAP = 256
+MAX_CANDIDATE_LINES = 3
+MAX_CANDIDATE_CHARS = 4096
+CANDIDATE_OVERLAP = 256
 
 RULES = [
     (
@@ -413,40 +414,38 @@ def text_blocks(path: str, lines: list[str]) -> list[list[tuple[int, str]]]:
     return blocks
 
 
-def bounded_block_windows(
-    block: list[tuple[int, str]],
+def bounded_text_windows(
+    line_number: int,
+    text: str,
 ) -> list[tuple[int, str]]:
-    """Return bounded, overlapping character windows for one logical block."""
-    if not block:
-        return []
-
-    parts = []
-    line_offsets = []
-    offset = 0
-    for line_number, part in block:
-        if parts:
-            offset += 1
-        line_offsets.append((offset, line_number))
-        parts.append(part)
-        offset += len(part)
-
-    text = " ".join(parts)
+    """Return bounded character windows for one one-to-three-line candidate."""
     if not text:
         return []
 
     windows = []
     start = 0
     while start < len(text):
-        end = min(start + MAX_LOGICAL_BLOCK_CHARS, len(text))
-        line_number = block[0][0]
-        for line_offset, candidate_line in line_offsets:
-            if line_offset > start:
-                break
-            line_number = candidate_line
+        end = min(start + MAX_CANDIDATE_CHARS, len(text))
         windows.append((line_number, text[start:end]))
         if end == len(text):
             break
-        start = end - LOGICAL_BLOCK_OVERLAP
+        start = end - CANDIDATE_OVERLAP
+    return windows
+
+
+def bounded_block_windows(
+    block: list[tuple[int, str]],
+) -> list[tuple[int, str]]:
+    """Return all contiguous one-to-three-line candidates from one structural block."""
+    windows = []
+    for start in range(len(block)):
+        for size in range(1, MAX_CANDIDATE_LINES + 1):
+            candidate = block[start:start + size]
+            if len(candidate) != size:
+                break
+            line_number = candidate[0][0]
+            text = " ".join(part for _, part in candidate).strip()
+            windows.extend(bounded_text_windows(line_number, text))
     return windows
 
 
