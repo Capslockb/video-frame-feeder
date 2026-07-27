@@ -13,17 +13,59 @@ DOC_NAMES = {"README.md", "RESEARCH.md", "SECURITY.md", "CONTRIBUTING.md", "AGEN
 DOC_DIR_PARTS = {"docs", "doc", "website", "site", "public", "docs-site"}
 FIXTURE_PARTS = {"tests", "fixtures", "public-docs"}
 DOC_EXTS = {".md", ".mdx", ".rst", ".txt", ".html", ".htm"}
-EXCLUDE_PARTS = {"i18n", "CHANGELOG.md", "sessions", "vendor", "node_modules", ".git", "__pycache__", ".pytest_cache"}
+EXCLUDE_PARTS = {
+    "i18n",
+    "CHANGELOG.md",
+    "sessions",
+    "vendor",
+    "node_modules",
+    ".git",
+    "__pycache__",
+    ".pytest_cache",
+}
 ZERO_SHA = "0" * 40
 
 RULES = [
-    ("PDS001", re.compile(r"(?i)\b(ignore|disregard|override)\b.{0,100}\b(previous|above|system|developer|policy|instruction)s?\b")),
-    ("PDS002", re.compile(r"(?i)\b(reveal|print|show|exfiltrate|leak)\b.{0,100}\b(secret|token|credential|password|policy|system prompt|developer message)s?\b")),
-    ("PDS003", re.compile(r"(?i)\b(approve|merge|push|deploy|purchase|transfer|delete|rotate|disable)\b.{0,100}\b(PR|pull request|repository|repo|payment|account|guard|check|policy|automation)\b")),
-    ("PDS004", re.compile(r"(?i)\b(privileged command|private control|non-public guard|secret marker|trusted[- ]identity rule|mutation authorization|worker queue|controller lease|private escalation)\b")),
+    (
+        "PDS001",
+        re.compile(
+            r"(?i)\b(ignore|disregard|override)\b.{0,100}"
+            r"\b(previous|above|system|developer|policy|instruction)s?\b"
+        ),
+    ),
+    (
+        "PDS002",
+        re.compile(
+            r"(?i)\b(reveal|print|show|exfiltrate|leak)\b.{0,100}"
+            r"\b(secret|token|credential|password|policy|system prompt|developer message)s?\b"
+        ),
+    ),
+    (
+        "PDS003",
+        re.compile(
+            r"(?i)\b(approve|merge|push|deploy|purchase|transfer|delete|rotate|disable)\b.{0,100}"
+            r"\b(PR|pull request|repository|repo|payment|account|guard|check|policy|automation)\b"
+        ),
+    ),
+    (
+        "PDS004",
+        re.compile(
+            r"(?i)\b(privileged command|private control|non-public guard|secret marker|"
+            r"trusted[- ]identity rule|mutation authorization|worker queue|controller lease|"
+            r"private escalation)\b"
+        ),
+    ),
 ]
-UNCERTAIN = re.compile(r"(?i)\b(maintaining model|automation agent|autonomous maintainer|repository bot)\b.{0,100}\b(must|shall|required to|always|never|use tool|run command|obey|ignore|stop when|final status)\b")
-BENIGN_UNCERTAIN = re.compile(r"(?i)\b(example|sample|template|user-facing|configuration|API|worker thread|service worker|inference|event loop|model name|route|provider|guardrail|security policy|documentation)\b")
+UNCERTAIN = re.compile(
+    r"(?i)\b(maintaining model|automation agent|autonomous maintainer|repository bot)\b.{0,100}"
+    r"\b(must|shall|required to|always|never|use tool|run command|obey|ignore|stop when|"
+    r"final status)\b"
+)
+BENIGN_UNCERTAIN = re.compile(
+    r"(?i)\b(example|sample|template|user-facing|configuration|API|worker thread|"
+    r"service worker|inference|event loop|model name|route|provider|guardrail|"
+    r"security policy|documentation)\b"
+)
 CLAUSE_BREAK = re.compile(r"(?:[.;:!?]\s+|\s+[—–]\s+)")
 HUMAN_GUIDANCE = re.compile(
     r"(?i)\b(?:contributor'?s?\s+(?:PR|pull request)|merge via (?:github|the )|"
@@ -35,26 +77,39 @@ def default_branch() -> str:
     explicit = os.environ.get("GITHUB_BASE_REF") or os.environ.get("DEFAULT_BRANCH")
     if explicit:
         return explicit
-    p = subprocess.run(["git", "symbolic-ref", "refs/remotes/origin/HEAD"], text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-    if p.returncode == 0 and "/" in p.stdout:
-        return p.stdout.strip().rsplit("/", 1)[-1]
+    process = subprocess.run(
+        ["git", "symbolic-ref", "refs/remotes/origin/HEAD"],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    if process.returncode == 0 and "/" in process.stdout:
+        return process.stdout.strip().rsplit("/", 1)[-1]
     return "main"
 
 
 def git_stdout(*args: str) -> str | None:
-    p = subprocess.run(["git", *args], text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-    if p.returncode != 0:
+    process = subprocess.run(
+        ["git", *args],
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    if process.returncode != 0:
         return None
-    value = p.stdout.strip()
+    value = process.stdout.strip()
     return value or None
 
 
 def git_commit_exists(ref: str) -> bool:
-    return subprocess.run(
-        ["git", "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"],
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    ).returncode == 0
+    return (
+        subprocess.run(
+            ["git", "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"],
+            stdout=subprocess.DEVNULL,
+            stderr=subprocess.DEVNULL,
+        ).returncode
+        == 0
+    )
 
 
 def diff_args() -> list[str] | None:
@@ -72,7 +127,6 @@ def diff_args() -> list[str] | None:
             merge_base = git_stdout("merge-base", "HEAD", ref)
             if merge_base:
                 return [f"{merge_base}...HEAD"]
-
         return None
 
     base = f"origin/{default_branch()}"
@@ -86,65 +140,35 @@ def all_files() -> list[str]:
 
 
 def is_public_doc(path: str, include_fixtures: bool = False) -> bool:
-    p = Path(path)
-    if not p.exists() or not p.is_file():
+    candidate = Path(path)
+    if not candidate.exists() or not candidate.is_file():
         return False
-    parts = set(p.parts)
+    parts = set(candidate.parts)
     if parts & EXCLUDE_PARTS:
         return False
-    if include_fixtures and FIXTURE_PARTS <= parts and p.suffix.lower() in DOC_EXTS:
+    if (
+        include_fixtures
+        and FIXTURE_PARTS <= parts
+        and candidate.suffix.lower() in DOC_EXTS
+    ):
         return True
-    return p.name in DOC_NAMES or (p.suffix.lower() in DOC_EXTS and bool(parts & DOC_DIR_PARTS))
+    return candidate.name in DOC_NAMES or (
+        candidate.suffix.lower() in DOC_EXTS and bool(parts & DOC_DIR_PARTS)
+    )
 
 
 def changed_files() -> list[str]:
     args = diff_args()
     if args is None:
         return all_files()
-    p = subprocess.run(
+    process = subprocess.run(
         ["git", "diff", "--name-only", "-z", "--diff-filter=ACMRT", *args],
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
     )
-    if p.returncode != 0:
+    if process.returncode != 0:
         return all_files()
-    return [os.fsdecode(raw_path) for raw_path in p.stdout.split(b"\0") if raw_path]
-
-
-def changed_added_lines(files: list[str]) -> dict[str, set[int]] | None:
-    if not files:
-        return {}
-    args = diff_args()
-    if args is None:
-        return None
-
-    out: dict[str, set[int]] = {}
-    for path in files:
-        p = subprocess.run(
-            ["git", "diff", "--no-color", "--unified=0", "--diff-filter=ACMRT", *args, "--", path],
-            text=True,
-            encoding="utf-8",
-            errors="surrogateescape",
-            stdout=subprocess.PIPE,
-            stderr=subprocess.DEVNULL,
-        )
-        if p.returncode != 0:
-            return None
-
-        new_line = None
-        selected: set[int] = set()
-        for line in p.stdout.splitlines():
-            if line.startswith("@@"):
-                m = re.search(r"\+(\d+)(?:,(\d+))?", line)
-                new_line = int(m.group(1)) if m else None
-            elif new_line is not None:
-                if line.startswith("+"):
-                    selected.add(new_line)
-                    new_line += 1
-                elif not line.startswith("-"):
-                    new_line += 1
-        out[path] = selected
-    return out
+    return [os.fsdecode(raw_path) for raw_path in process.stdout.split(b"\0") if raw_path]
 
 
 def mask_quoted_text(text: str) -> str:
@@ -178,8 +202,8 @@ def scan_text(path: str, line_number: int, text: str) -> list[tuple[str, int, st
     findings = []
     unquoted = mask_quoted_text(text)
     scannable = mask_matches(unquoted, HUMAN_GUIDANCE)
-    for rule_id, rx in RULES:
-        if rx.search(scannable):
+    for rule_id, expression in RULES:
+        if expression.search(scannable):
             findings.append((path, line_number, rule_id))
     for clause in CLAUSE_BREAK.split(scannable):
         if UNCERTAIN.search(clause) and not BENIGN_UNCERTAIN.search(clause):
@@ -188,17 +212,15 @@ def scan_text(path: str, line_number: int, text: str) -> list[tuple[str, int, st
     return findings
 
 
-def scan_file(path: str, line_numbers) -> list[tuple[str, int, str]]:
+def scan_file(path: str) -> list[tuple[str, int, str]]:
     try:
         lines = Path(path).read_text(encoding="utf-8", errors="ignore").splitlines()
     except Exception:
         return [(path, 1, "PDS_READ_ERROR")]
 
-    selected = {i for i in line_numbers if 1 <= i <= len(lines)}
     findings = set()
-
-    for i in selected:
-        findings.update(scan_text(path, i, lines[i - 1]))
+    for line_number, line in enumerate(lines, start=1):
+        findings.update(scan_text(path, line_number, line))
 
     # Scan bounded windows inside one Markdown paragraph so line wrapping cannot
     # split a risky phrase across physical lines. The window is deliberately
@@ -211,12 +233,8 @@ def scan_file(path: str, line_numbers) -> list[tuple[str, int, str]]:
             window_lines = lines[start:end]
             if any(not line.strip() for line in window_lines):
                 continue
-            window_numbers = set(range(start + 1, end + 1))
-            touched = selected & window_numbers
-            if not touched:
-                continue
             text = " ".join(line.strip() for line in window_lines)
-            findings.update(scan_text(path, min(touched), text))
+            findings.update(scan_text(path, start + 1, text))
 
     return sorted(findings, key=lambda item: (item[1], item[2]))
 
@@ -226,29 +244,28 @@ def display_path(path: str) -> str:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser()
-    ap.add_argument("--all", action="store_true")
-    ap.add_argument("--include-test-fixtures", action="store_true")
-    args = ap.parse_args()
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--all", action="store_true")
+    parser.add_argument("--include-test-fixtures", action="store_true")
+    args = parser.parse_args()
+
     include_fixtures = args.include_test_fixtures or args.all
     candidates = all_files() if args.all else changed_files()
-    files = [f for f in candidates if is_public_doc(f, include_fixtures)]
-    added = None if args.all else changed_added_lines(files)
+    files = [path for path in candidates if is_public_doc(path, include_fixtures)]
+
     findings = []
-    for f in files:
-        if added is None:
-            try:
-                line_numbers = range(1, len(Path(f).read_text(encoding="utf-8", errors="ignore").splitlines()) + 1)
-            except Exception:
-                line_numbers = [1]
-        else:
-            line_numbers = sorted(added.get(f, set()))
-        findings.extend(scan_file(f, line_numbers))
+    # Scan each changed document completely. This intentionally includes
+    # deletion-only edits, because removing separators can change paragraph
+    # semantics without adding a new physical line.
+    for path in files:
+        findings.extend(scan_file(path))
+
     if findings:
         print("public-docs-safety: FAIL")
-        for f, i, rule_id in findings:
-            print(f"{display_path(f)}:{i}: {rule_id}")
+        for path, line_number, rule_id in findings:
+            print(f"{display_path(path)}:{line_number}: {rule_id}")
         return 1
+
     print("public-docs-safety: PASS")
     return 0
 
