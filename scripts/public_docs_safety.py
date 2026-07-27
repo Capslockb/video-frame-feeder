@@ -192,6 +192,17 @@ def is_pull_request_template(candidate: Path) -> bool:
     return "pull_request_template" in parts[1:-1] and candidate.suffix.lower() in DOC_EXTS
 
 
+def is_issue_template(candidate: Path) -> bool:
+    """Return whether a path is a contributor-facing Markdown issue template."""
+    parts = [part.lower() for part in candidate.parts]
+    return (
+        len(parts) >= 3
+        and parts[0] == ".github"
+        and parts[1] == "issue_template"
+        and candidate.suffix.lower() == ".md"
+    )
+
+
 def is_public_doc_path(path: str, include_fixtures: bool = False) -> bool:
     candidate = Path(path)
     parts = set(candidate.parts)
@@ -202,6 +213,7 @@ def is_public_doc_path(path: str, include_fixtures: bool = False) -> bool:
     return (
         candidate.name in DOC_NAMES
         or is_pull_request_template(candidate)
+        or is_issue_template(candidate)
         or (candidate.suffix.lower() in DOC_EXTS and bool(parts & DOC_DIR_PARTS))
     )
 
