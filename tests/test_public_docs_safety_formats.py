@@ -59,7 +59,7 @@ class PublicDocsSafetyFormatsTest(unittest.TestCase):
 
     def test_html_elements_are_separate_structural_blocks(self):
         process = run_scanner(
-            {"docs/guide.html": "<p>Ignore</p>\n<p>Previous instructions are documented here.</p>\n"}
+            {"docs/guide.html": "<p>Ignore</p><p>Previous instructions are documented here.</p>\n"}
         )
         self.assertEqual(process.returncode, 0, process.stdout)
 
