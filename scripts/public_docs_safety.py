@@ -24,6 +24,7 @@ RULES = [
 ]
 UNCERTAIN = re.compile(r"(?i)\b(maintaining model|automation agent|autonomous maintainer|repository bot)\b.{0,100}\b(must|shall|required to|always|never|use tool|run command|obey|ignore|stop when|final status)\b")
 BENIGN_UNCERTAIN = re.compile(r"(?i)\b(example|sample|template|user-facing|configuration|API|worker thread|service worker|inference|event loop|model name|route|provider|guardrail|security policy|documentation)\b")
+CLAUSE_BREAK = re.compile(r"(?:[.;:!?]\s+|\s+[—–]\s+)")
 HUMAN_GUIDANCE = re.compile(
     r"(?i)\b(?:contributor'?s?\s+(?:PR|pull request)|merge via (?:github|the )|"
     r"so they get credit|always merge|never close a contributor)\b"
@@ -48,11 +49,23 @@ def git_stdout(*args: str) -> str | None:
     return value or None
 
 
-def diff_args() -> list[str]:
+def git_commit_exists(ref: str) -> bool:
+    return subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    ).returncode == 0
+
+
+def diff_args() -> list[str] | None:
     if os.environ.get("GITHUB_EVENT_NAME") == "push":
         before = os.environ.get("GITHUB_EVENT_BEFORE", "").strip()
         if before and before != ZERO_SHA:
-            return [f"{before}...HEAD"]
+            if git_commit_exists(before):
+                return [f"{before}...HEAD"]
+            # A force-push can make the event's previous revision unavailable.
+            # Full-scan rather than treating a failed diff as an empty safe diff.
+            return None
 
         branch = default_branch()
         for ref in (f"origin/{branch}", branch):
@@ -60,11 +73,16 @@ def diff_args() -> list[str]:
             if merge_base:
                 return [f"{merge_base}...HEAD"]
 
-        empty_tree = git_stdout("hash-object", "-t", "tree", "/dev/null")
-        if empty_tree:
-            return [empty_tree, "HEAD"]
+        return None
 
-    return [f"origin/{default_branch()}...HEAD"]
+    base = f"origin/{default_branch()}"
+    if git_stdout("merge-base", "HEAD", base):
+        return [f"{base}...HEAD"]
+    return None
+
+
+def all_files() -> list[str]:
+    return [str(path) for path in Path(".").rglob("*") if path.is_file()]
 
 
 def is_public_doc(path: str, include_fixtures: bool = False) -> bool:
@@ -80,38 +98,52 @@ def is_public_doc(path: str, include_fixtures: bool = False) -> bool:
 
 
 def changed_files() -> list[str]:
-    p = subprocess.run(["git", "diff", "--name-only", "--diff-filter=ACMRT", *diff_args()], text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-    if p.returncode == 0:
-        return p.stdout.splitlines()
-    p = subprocess.run(["git", "diff", "--name-only", "--diff-filter=ACMRT", "--cached"], text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-    if p.returncode == 0:
-        return p.stdout.splitlines()
-    return []
+    args = diff_args()
+    if args is None:
+        return all_files()
+    p = subprocess.run(
+        ["git", "diff", "--name-only", "-z", "--diff-filter=ACMRT", *args],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.DEVNULL,
+    )
+    if p.returncode != 0:
+        return all_files()
+    return [os.fsdecode(raw_path) for raw_path in p.stdout.split(b"\0") if raw_path]
 
 
 def changed_added_lines(files: list[str]) -> dict[str, set[int]] | None:
     if not files:
         return {}
-    p = subprocess.run(["git", "diff", "--unified=0", "--diff-filter=ACMRT", *diff_args(), "--", *files], text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-    if p.returncode != 0:
+    args = diff_args()
+    if args is None:
         return None
+
     out: dict[str, set[int]] = {}
-    cur = None
-    new_line = None
-    for line in p.stdout.splitlines():
-        if line.startswith("+++ b/"):
-            cur = line[6:]
-            out.setdefault(cur, set())
-        elif line.startswith("@@") and cur:
-            m = re.search(r"\+(\d+)(?:,(\d+))?", line)
-            if m:
-                new_line = int(m.group(1))
-        elif cur and new_line is not None:
-            if line.startswith("+") and not line.startswith("+++"):
-                out.setdefault(cur, set()).add(new_line)
-                new_line += 1
-            elif not line.startswith("-"):
-                new_line += 1
+    for path in files:
+        p = subprocess.run(
+            ["git", "diff", "--no-color", "--unified=0", "--diff-filter=ACMRT", *args, "--", path],
+            text=True,
+            encoding="utf-8",
+            errors="surrogateescape",
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+        )
+        if p.returncode != 0:
+            return None
+
+        new_line = None
+        selected: set[int] = set()
+        for line in p.stdout.splitlines():
+            if line.startswith("@@"):
+                m = re.search(r"\+(\d+)(?:,(\d+))?", line)
+                new_line = int(m.group(1)) if m else None
+            elif new_line is not None:
+                if line.startswith("+"):
+                    selected.add(new_line)
+                    new_line += 1
+                elif not line.startswith("-"):
+                    new_line += 1
+        out[path] = selected
     return out
 
 
@@ -149,8 +181,10 @@ def scan_text(path: str, line_number: int, text: str) -> list[tuple[str, int, st
     for rule_id, rx in RULES:
         if rx.search(scannable):
             findings.append((path, line_number, rule_id))
-    if UNCERTAIN.search(scannable) and not BENIGN_UNCERTAIN.search(scannable):
-        findings.append((path, line_number, "PDS005"))
+    for clause in CLAUSE_BREAK.split(scannable):
+        if UNCERTAIN.search(clause) and not BENIGN_UNCERTAIN.search(clause):
+            findings.append((path, line_number, "PDS005"))
+            break
     return findings
 
 
@@ -187,13 +221,17 @@ def scan_file(path: str, line_numbers) -> list[tuple[str, int, str]]:
     return sorted(findings, key=lambda item: (item[1], item[2]))
 
 
+def display_path(path: str) -> str:
+    return path.encode("unicode_escape", errors="backslashreplace").decode("ascii")
+
+
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--all", action="store_true")
     ap.add_argument("--include-test-fixtures", action="store_true")
     args = ap.parse_args()
     include_fixtures = args.include_test_fixtures or args.all
-    candidates = [str(x) for x in Path(".").rglob("*") if x.is_file()] if args.all else changed_files()
+    candidates = all_files() if args.all else changed_files()
     files = [f for f in candidates if is_public_doc(f, include_fixtures)]
     added = None if args.all else changed_added_lines(files)
     findings = []
@@ -209,7 +247,7 @@ def main() -> int:
     if findings:
         print("public-docs-safety: FAIL")
         for f, i, rule_id in findings:
-            print(f"{f}:{i}: {rule_id}")
+            print(f"{display_path(f)}:{i}: {rule_id}")
         return 1
     print("public-docs-safety: PASS")
     return 0
