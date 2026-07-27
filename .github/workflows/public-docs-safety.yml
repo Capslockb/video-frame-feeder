@@ -6,15 +6,31 @@ on:
     branches: [ main, master, release/** ]
     paths:
       - README.md
+      - '**/README.md'
       - RESEARCH.md
+      - '**/RESEARCH.md'
       - SECURITY.md
+      - '**/SECURITY.md'
       - CONTRIBUTING.md
+      - '**/CONTRIBUTING.md'
       - AGENTS.md
+      - '**/AGENTS.md'
       - docs/**
+      - '**/docs/**'
+      - doc/**
+      - '**/doc/**'
+      - website/**
+      - '**/website/**'
+      - site/**
+      - '**/site/**'
+      - public/**
+      - '**/public/**'
+      - docs-site/**
+      - '**/docs-site/**'
       - .github/CODEOWNERS
       - .github/workflows/public-docs-safety.yml
       - scripts/public_docs_safety.py
-      - tests/test_public_docs_safety.py
+      - tests/test_public_docs_safety*.py
       - tests/fixtures/public-docs/**
 
 jobs:
@@ -37,4 +53,4 @@ jobs:
       - name: public-docs-safety
         run: python3 scripts/public_docs_safety.py
       - name: adversarial fixture unittest
-        run: python3 tests/test_public_docs_safety.py
+        run: python3 -m unittest discover -s tests -p 'test_public_docs_safety*.py'
