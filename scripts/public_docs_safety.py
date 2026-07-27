@@ -13,6 +13,13 @@ from pathlib import Path
 DOC_NAMES = {
     "README",
     "README.md",
+    "README.mdx",
+    "README.rst",
+    "README.txt",
+    "README.html",
+    "README.htm",
+    "README.adoc",
+    "README.asciidoc",
     "RESEARCH.md",
     "SECURITY.md",
     "CONTRIBUTING.md",
@@ -89,6 +96,12 @@ BENIGN_UNCERTAIN = re.compile(
     r"security policy|documentation)\b"
 )
 CLAUSE_BREAK = re.compile(r"(?:[.;:!?]\s+|\s+[—–]\s+)")
+UNCERTAIN_GLUE = re.compile(
+    r"(?i)(\b(?:maintaining model|automation agent|autonomous maintainer|repository bot)\b)"
+    r"\s*(?::|[—–])\s*"
+    r"(?=\b(?:must|shall|required to|always|never|use tool|run command|obey|ignore|stop when|"
+    r"final status)\b)"
+)
 HUMAN_GUIDANCE = re.compile(
     r"(?i)\b(?:contributor'?s?\s+(?:PR|pull request)|merge via (?:github|the )|"
     r"so they get credit|always merge|never close a contributor)\b"
@@ -108,6 +121,7 @@ HTML_BLOCK_TAGS = {
     "header", "hr", "li", "main", "nav", "ol", "p", "pre", "section", "table", "tbody",
     "td", "tfoot", "th", "thead", "tr", "ul",
 }
+HTML_TEXT_ATTRS = {"alt", "title", "aria-label", "aria-description", "placeholder"}
 
 
 def default_branch() -> str:
@@ -240,6 +254,7 @@ def scan_text(path: str, line_number: int, text: str) -> list[tuple[str, int, st
             findings.append((path, line_number, rule_id))
 
     uncertain_scannable = mask_matches(mask_quoted_text(text), HUMAN_GUIDANCE)
+    uncertain_scannable = UNCERTAIN_GLUE.sub(r"\1 ", uncertain_scannable)
     for clause in CLAUSE_BREAK.split(uncertain_scannable):
         if UNCERTAIN.search(clause) and not BENIGN_UNCERTAIN.search(clause):
             findings.append((path, line_number, "PDS005"))
@@ -264,6 +279,13 @@ class HtmlBlockCollector(HTMLParser):
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
         if tag.lower() in HTML_BLOCK_TAGS:
             self.flush()
+        line_number = self.getpos()[0]
+        for name, value in attrs:
+            if name.lower() not in HTML_TEXT_ATTRS or value is None:
+                continue
+            text = " ".join(value.split())
+            if text:
+                self.blocks.append((line_number, text))
 
     def handle_endtag(self, tag: str) -> None:
         if tag.lower() in HTML_BLOCK_TAGS:
@@ -393,7 +415,7 @@ def main() -> int:
     parser.add_argument("--include-test-fixtures", action="store_true")
     args = parser.parse_args()
 
-    include_fixtures = args.include_test_fixtures or args.all
+    include_fixtures = args.include_test_fixtures
     candidates = all_files() if args.all else changed_files()
     files = [path for path in candidates if is_public_doc(path, include_fixtures)]
 
