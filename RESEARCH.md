@@ -2,7 +2,7 @@
 
 **Original research date:** 2026-05-27  
 **Implementation update:** 2026-06-07  
-**Documentation status checked:** 2026-07-26
+**Documentation status checked:** 2026-07-27
 
 > [!IMPORTANT]
 > This document combines a historical research snapshot with the behavior shipped in this repository.
@@ -23,8 +23,9 @@ Additional current boundaries:
 - the filtered-path hash baseline advances before full-frame capture and bridge acceptance, so a transient failure can suppress an unchanged retry; see accepted [Issue #11](https://github.com/Capslockb/video-frame-feeder/issues/11);
 - average hash can miss material global-brightness changes that preserve relative pixel structure; see accepted [Issue #12](https://github.com/Capslockb/video-frame-feeder/issues/12);
 - successful HTTP responses are not schema-validated: non-object JSON can terminate the loop, while a truthy non-boolean `accepted` value can be miscounted as success; see accepted [Issue #13](https://github.com/Capslockb/video-frame-feeder/issues/13);
-- frame POSTs follow redirects, so HTTP 307 or 308 can resend the captured JPEG beyond the configured endpoint; use a direct non-redirecting endpoint while accepted [Issue #14](https://github.com/Capslockb/video-frame-feeder/issues/14) remains open; and
-- routine HTTP failure output can reproduce endpoint URLs, query metadata, source labels, and followed redirect targets; keep raw feeder logs private while accepted [Issue #15](https://github.com/Capslockb/video-frame-feeder/issues/15) remains open.
+- frame POSTs follow redirects, so HTTP 307 or 308 can resend the captured JPEG beyond the configured endpoint; use a direct non-redirecting endpoint while accepted [Issue #14](https://github.com/Capslockb/video-frame-feeder/issues/14) remains open;
+- routine HTTP failure output can reproduce endpoint URLs, query metadata, source labels, and followed redirect targets; keep raw feeder logs private while accepted [Issue #15](https://github.com/Capslockb/video-frame-feeder/issues/15) remains open; and
+- routine startup diagnostics print the complete endpoint, raw capture source, effective source label, and FFmpeg command prefixes; keep startup output private while accepted [Issue #17](https://github.com/Capslockb/video-frame-feeder/issues/17) remains open.
 
 ## Current repository status
 
@@ -71,6 +72,8 @@ A successful HTTP status is not sufficient delivery evidence. The current feeder
 The current HTTP client also follows redirects. In particular, a 307 or 308 can resend the JPEG body to the redirect target, and the final response does not prove that the explicitly configured bridge handled the frame. Until Issue #14 is resolved, use a direct stable non-redirecting endpoint on loopback or a trusted private network.
 
 HTTP failures currently preserve and print raw Requests exception text. Depending on the failure, that text can contain the configured endpoint, existing or generated query parameters, source-label metadata, or a followed redirect target. Until Issue #15 is resolved, keep feeder failure output private and do not use secret-bearing endpoint URLs or labels.
+
+Routine startup diagnostics also print the full configured endpoint, raw capture source, effective source label, and FFmpeg command prefixes before the loop begins. On Windows, this can reproduce the selected window title even when an explicit neutral `--source-label` is supplied. Until Issue #17 is resolved, treat ordinary startup stdout and stderr as sensitive and do not publish them without manual redaction.
 
 ### Hermes `voice_live_frame` tool
 
@@ -146,7 +149,7 @@ In the ordinary filtered path, the implementation currently stores a selected ha
 ```text
 --endpoint URL        Bridge /frame endpoint
 --interval SECONDS    Finite values below 1.0 are clamped to 1.0;
-                      non-finite values are not currently rejected
+                       non-finite values are not currently rejected
 --source VALUE        screen, X11 window ID, or Windows window title
 --width / --height    Positive capture dimensions expected; defaults to 768×768
 --x / --y             Linux screen-region offset
@@ -157,7 +160,7 @@ In the ordinary filtered path, the implementation currently stores a selected ha
 --stddev-min F        Thumbnail pixel standard-deviation threshold; default 0
 --no-content-filter   Disable hash and variance filtering
 --source-label TEXT   URL-encoded as the bridge's `source` query parameter;
-                      currently defaults to `--source`
+                       currently defaults to `--source`
 ```
 
 ## Historical Gemini Live research snapshot
@@ -245,6 +248,7 @@ The proposal described a Discord command accepting an attachment. The shipped up
 | Bridge response-schema validation | Not implemented | Require an object with literal boolean `accepted`; tracked in Issue #13 |
 | Redirect rejection | Not implemented | Use a direct non-redirecting endpoint; tracked in Issue #14 |
 | HTTP failure redaction | Not implemented | Keep feeder failure output private; tracked in Issue #15 |
+| Startup-diagnostic redaction | Not implemented | Keep routine startup output private; tracked in Issue #17 |
 | `mediaResolution: "LOW"` | Rejected and removed | Do not use without fresh verification |
 | Turn-coverage override | Reported already present upstream | Verify against current bridge/API |
 | Video token-budget counter | Not implemented | Use capture and bridge gating plus measured usage |
@@ -259,8 +263,9 @@ The proposal described a Discord command accepting an attachment. The shipped up
 - Use a direct stable endpoint that does not redirect until Issue #14 is resolved; a final successful response is not proof that the configured bridge received the frame directly.
 - Do not publicly expose an unauthenticated frame-ingestion endpoint.
 - Do not put credentials in endpoint URLs or command-line arguments.
-- Supply an explicit neutral `--source-label` when the capture source itself contains sensitive context.
+- Supply an explicit neutral `--source-label` when the capture source itself contains sensitive context; this limits request metadata but does not redact the raw capture source from current startup diagnostics.
 - Keep raw feeder failure output private until Issue #15 is resolved; exception text can include URLs, query metadata, source labels, or redirect targets.
+- Keep routine startup output private until Issue #17 is resolved; it can include the complete endpoint, raw source, source label, and FFmpeg input details.
 - Keep capture dimensions positive and use a finite interval value until Issue #10 is resolved.
 - Verify the selected display, region, or window before continuous capture.
 - Use `--force` only when requesting forced acceptance is intentional, keep the endpoint query-free until Issue #9 is resolved, and verify that the receiving bridge recognizes the parameter.
