@@ -9,7 +9,7 @@ import subprocess
 import sys
 from pathlib import Path
 
-DOC_NAMES = {"README.md", "SECURITY.md", "CONTRIBUTING.md", "AGENTS.md"}
+DOC_NAMES = {"README.md", "RESEARCH.md", "SECURITY.md", "CONTRIBUTING.md", "AGENTS.md"}
 DOC_DIR_PARTS = {"docs", "doc", "website", "site", "public", "docs-site"}
 FIXTURE_PARTS = {"tests", "fixtures", "public-docs"}
 DOC_EXTS = {".md", ".mdx", ".rst", ".txt", ".html", ".htm"}
@@ -24,6 +24,10 @@ RULES = [
 ]
 UNCERTAIN = re.compile(r"(?i)\b(maintaining model|automation agent|autonomous maintainer|repository bot)\b.{0,100}\b(must|shall|required to|always|never|use tool|run command|obey|ignore|stop when|final status)\b")
 BENIGN_UNCERTAIN = re.compile(r"(?i)\b(example|sample|template|user-facing|configuration|API|worker thread|service worker|inference|event loop|model name|route|provider|guardrail|security policy|documentation)\b")
+HUMAN_GUIDANCE = re.compile(
+    r"(?i)\b(?:contributor'?s?\s+(?:PR|pull request)|merge via (?:github|the )|"
+    r"so they get credit|always merge|never close a contributor)\b"
+)
 
 
 def default_branch() -> str:
@@ -36,15 +40,31 @@ def default_branch() -> str:
     return "main"
 
 
-def diff_base() -> str:
+def git_stdout(*args: str) -> str | None:
+    p = subprocess.run(["git", *args], text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    if p.returncode != 0:
+        return None
+    value = p.stdout.strip()
+    return value or None
+
+
+def diff_args() -> list[str]:
     if os.environ.get("GITHUB_EVENT_NAME") == "push":
         before = os.environ.get("GITHUB_EVENT_BEFORE", "").strip()
         if before and before != ZERO_SHA:
-            return before
-        p = subprocess.run(["git", "rev-parse", "HEAD^"], text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
-        if p.returncode == 0 and p.stdout.strip():
-            return p.stdout.strip()
-    return f"origin/{default_branch()}"
+            return [f"{before}...HEAD"]
+
+        branch = default_branch()
+        for ref in (f"origin/{branch}", branch):
+            merge_base = git_stdout("merge-base", "HEAD", ref)
+            if merge_base:
+                return [f"{merge_base}...HEAD"]
+
+        empty_tree = git_stdout("hash-object", "-t", "tree", "/dev/null")
+        if empty_tree:
+            return [empty_tree, "HEAD"]
+
+    return [f"origin/{default_branch()}...HEAD"]
 
 
 def is_public_doc(path: str, include_fixtures: bool = False) -> bool:
@@ -60,7 +80,7 @@ def is_public_doc(path: str, include_fixtures: bool = False) -> bool:
 
 
 def changed_files() -> list[str]:
-    p = subprocess.run(["git", "diff", "--name-only", "--diff-filter=ACMRT", f"{diff_base()}...HEAD"], text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    p = subprocess.run(["git", "diff", "--name-only", "--diff-filter=ACMRT", *diff_args()], text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     if p.returncode == 0:
         return p.stdout.splitlines()
     p = subprocess.run(["git", "diff", "--name-only", "--diff-filter=ACMRT", "--cached"], text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
@@ -72,7 +92,7 @@ def changed_files() -> list[str]:
 def changed_added_lines(files: list[str]) -> dict[str, set[int]] | None:
     if not files:
         return {}
-    p = subprocess.run(["git", "diff", "--unified=0", "--diff-filter=ACMRT", f"{diff_base()}...HEAD", "--", *files], text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
+    p = subprocess.run(["git", "diff", "--unified=0", "--diff-filter=ACMRT", *diff_args(), "--", *files], text=True, stdout=subprocess.PIPE, stderr=subprocess.DEVNULL)
     if p.returncode != 0:
         return None
     out: dict[str, set[int]] = {}
@@ -114,17 +134,22 @@ def mask_quoted_text(text: str) -> str:
     return "".join(chars)
 
 
+def mask_matches(text: str, pattern: re.Pattern[str]) -> str:
+    chars = list(text)
+    for match in pattern.finditer(text):
+        for position in range(*match.span()):
+            chars[position] = " "
+    return "".join(chars)
+
+
 def scan_text(path: str, line_number: int, text: str) -> list[tuple[str, int, str]]:
     findings = []
     unquoted = mask_quoted_text(text)
-    human_guidance = bool(re.search(r"(?i)(contributor'?s? (PR|pull request)|merge via (github|the )|so they get credit|always merge|never close a contributor)", unquoted))
+    scannable = mask_matches(unquoted, HUMAN_GUIDANCE)
     for rule_id, rx in RULES:
-        if not rx.search(unquoted):
-            continue
-        if rule_id == "PDS003" and human_guidance:
-            continue
-        findings.append((path, line_number, rule_id))
-    if UNCERTAIN.search(unquoted) and not BENIGN_UNCERTAIN.search(unquoted) and not human_guidance:
+        if rx.search(scannable):
+            findings.append((path, line_number, rule_id))
+    if UNCERTAIN.search(scannable) and not BENIGN_UNCERTAIN.search(scannable):
         findings.append((path, line_number, "PDS005"))
     return findings
 
