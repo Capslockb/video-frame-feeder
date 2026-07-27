@@ -362,11 +362,13 @@ def scan_file(path: str) -> list[tuple[str, int, str]]:
         return [(path, 1, "PDS_READ_ERROR")]
 
     findings = set()
-    for line_number, line in enumerate(lines, start=1):
-        findings.update(scan_text(path, line_number, line))
+    is_html = Path(path).suffix.lower() in {".html", ".htm"}
+    if not is_html:
+        for line_number, line in enumerate(lines, start=1):
+            findings.update(scan_text(path, line_number, line))
 
     for block in text_blocks(path, lines):
-        if len(block) == 1 and Path(path).suffix.lower() in {".html", ".htm"}:
+        if len(block) == 1 and is_html:
             line_number, text = block[0]
             findings.update(scan_text(path, line_number, text))
             continue
