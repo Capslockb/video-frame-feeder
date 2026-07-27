@@ -149,7 +149,7 @@ In the ordinary filtered path, the implementation currently stores a selected ha
 ```text
 --endpoint URL        Bridge /frame endpoint
 --interval SECONDS    Finite values below 1.0 are clamped to 1.0;
-                       non-finite values are not currently rejected
+                      non-finite values are not currently rejected
 --source VALUE        screen, X11 window ID, or Windows window title
 --width / --height    Positive capture dimensions expected; defaults to 768×768
 --x / --y             Linux screen-region offset
@@ -160,7 +160,7 @@ In the ordinary filtered path, the implementation currently stores a selected ha
 --stddev-min F        Thumbnail pixel standard-deviation threshold; default 0
 --no-content-filter   Disable hash and variance filtering
 --source-label TEXT   URL-encoded as the bridge's `source` query parameter;
-                       currently defaults to `--source`
+                      currently defaults to `--source`
 ```
 
 ## Historical Gemini Live research snapshot
