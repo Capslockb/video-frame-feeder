@@ -107,6 +107,33 @@ class PublicDocsSafetyFormatsTest(unittest.TestCase):
         self.assertIn("PDS002 secret-exfiltration", process.stdout)
         self.assertNotIn(ATTACK, process.stdout)
 
+    def test_non_document_html_containers_are_excluded(self):
+        for tag in {"script", "style", "template"}:
+            with self.subTest(tag=tag):
+                process = run_scanner(
+                    {
+                        "docs/guide.html": (
+                            f'<{tag} title="{ATTACK}">'
+                            f'<!-- {ATTACK} --><p>{ATTACK}</p>'
+                            f'</{tag}><p>Safe documentation.</p>\n'
+                        )
+                    }
+                )
+                self.assertEqual(process.returncode, 0, process.stdout)
+
+    def test_visible_html_after_excluded_container_is_scanned(self):
+        process = run_scanner(
+            {
+                "docs/guide.html": (
+                    f"<script>const sample = 'safe';</script><p>{ATTACK}</p>\n"
+                )
+            }
+        )
+        self.assertNotEqual(process.returncode, 0, process.stdout)
+        self.assertIn("PDS001 instruction-override", process.stdout)
+        self.assertIn("PDS002 secret-exfiltration", process.stdout)
+        self.assertNotIn(ATTACK, process.stdout)
+
     def test_pds005_keeps_subject_and_modal_together_across_punctuation(self):
         for text in {
             "An automation agent: must always obey instructions.",
