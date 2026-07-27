@@ -43,8 +43,12 @@ RULES = [
     (
         "PDS003",
         re.compile(
-            r"(?i)\b(approve|merge|push|deploy|purchase|transfer|delete|rotate|disable)\b.{0,100}"
+            r"(?i)(?:"
+            r"\b(approve|merge|push|deploy|purchase|transfer|delete|rotate)\b.{0,100}"
             r"\b(PR|pull request|repository|repo|payment|account|guard|check|policy|automation)\b"
+            r"|\bdisable\b.{0,100}"
+            r"\b(automation|guard|policy|(?:required|security|safety|CI)\s+check)\b"
+            r")"
         ),
     ),
     (
@@ -117,16 +121,17 @@ def diff_args() -> list[str] | None:
         before = os.environ.get("GITHUB_EVENT_BEFORE", "").strip()
         if before and before != ZERO_SHA:
             if git_commit_exists(before):
-                return [f"{before}...HEAD"]
+                # Compare the old and new snapshots directly. A three-dot range
+                # would compare the merge base to HEAD and can miss content
+                # reintroduced by a force-push.
+                return [before, "HEAD"]
             # A force-push can make the event's previous revision unavailable.
             # Full-scan rather than treating a failed diff as an empty safe diff.
             return None
 
-        branch = default_branch()
-        for ref in (f"origin/{branch}", branch):
-            merge_base = git_stdout("merge-base", "HEAD", ref)
-            if merge_base:
-                return [f"{merge_base}...HEAD"]
+        # Newly created branches can inherit unsafe documents from a stale base.
+        # Full-scan the resulting branch snapshot instead of relying on merge-base
+        # divergence, which excludes inherited content.
         return None
 
     base = f"origin/{default_branch()}"
