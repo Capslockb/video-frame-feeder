@@ -41,6 +41,8 @@ EXCLUDE_PARTS = {
     ".pytest_cache",
 }
 ZERO_SHA = "0" * 40
+MAX_LOGICAL_BLOCK_CHARS = 4096
+LOGICAL_BLOCK_OVERLAP = 256
 
 RULES = [
     (
@@ -411,6 +413,43 @@ def text_blocks(path: str, lines: list[str]) -> list[list[tuple[int, str]]]:
     return blocks
 
 
+def bounded_block_windows(
+    block: list[tuple[int, str]],
+) -> list[tuple[int, str]]:
+    """Return bounded, overlapping character windows for one logical block."""
+    if not block:
+        return []
+
+    parts = []
+    line_offsets = []
+    offset = 0
+    for line_number, part in block:
+        if parts:
+            offset += 1
+        line_offsets.append((offset, line_number))
+        parts.append(part)
+        offset += len(part)
+
+    text = " ".join(parts)
+    if not text:
+        return []
+
+    windows = []
+    start = 0
+    while start < len(text):
+        end = min(start + MAX_LOGICAL_BLOCK_CHARS, len(text))
+        line_number = block[0][0]
+        for line_offset, candidate_line in line_offsets:
+            if line_offset > start:
+                break
+            line_number = candidate_line
+        windows.append((line_number, text[start:end]))
+        if end == len(text):
+            break
+        start = end - LOGICAL_BLOCK_OVERLAP
+    return windows
+
+
 def scan_file(path: str) -> list[tuple[str, int, str]]:
     try:
         lines = Path(path).read_text(encoding="utf-8", errors="ignore").splitlines()
@@ -424,17 +463,8 @@ def scan_file(path: str) -> list[tuple[str, int, str]]:
             findings.update(scan_text(path, line_number, line))
 
     for block in text_blocks(path, lines):
-        if len(block) == 1 and is_html:
-            line_number, text = block[0]
+        for line_number, text in bounded_block_windows(block):
             findings.update(scan_text(path, line_number, text))
-            continue
-        for start in range(len(block)):
-            for size in (2, 3):
-                window = block[start:start + size]
-                if len(window) != size:
-                    continue
-                text = " ".join(part for _, part in window)
-                findings.update(scan_text(path, window[0][0], text))
 
     return sorted(findings, key=lambda item: (item[1], item[2]))
 
