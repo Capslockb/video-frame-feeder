@@ -192,10 +192,8 @@ def is_pull_request_template(candidate: Path) -> bool:
     return "pull_request_template" in parts[1:-1] and candidate.suffix.lower() in DOC_EXTS
 
 
-def is_public_doc(path: str, include_fixtures: bool = False) -> bool:
+def is_public_doc_path(path: str, include_fixtures: bool = False) -> bool:
     candidate = Path(path)
-    if not candidate.exists() or not candidate.is_file():
-        return False
     parts = set(candidate.parts)
     if parts & EXCLUDE_PARTS:
         return False
@@ -208,18 +206,51 @@ def is_public_doc(path: str, include_fixtures: bool = False) -> bool:
     )
 
 
+def is_public_doc(path: str, include_fixtures: bool = False) -> bool:
+    candidate = Path(path)
+    return candidate.exists() and candidate.is_file() and is_public_doc_path(path, include_fixtures)
+
+
+def parse_name_status(raw: bytes) -> list[tuple[str, list[str]]]:
+    fields = [field for field in raw.split(b"\0") if field]
+    changes: list[tuple[str, list[str]]] = []
+    index = 0
+    while index < len(fields):
+        status = os.fsdecode(fields[index])
+        index += 1
+        path_count = 2 if status[:1] in {"R", "C"} else 1
+        if index + path_count > len(fields):
+            return []
+        paths = [os.fsdecode(path) for path in fields[index:index + path_count]]
+        index += path_count
+        changes.append((status, paths))
+    return changes
+
+
 def changed_files() -> list[str]:
     args = diff_args()
     if args is None:
         return all_files()
     process = subprocess.run(
-        ["git", "diff", "--name-only", "-z", "--diff-filter=ACMRT", *args],
+        ["git", "diff", "--name-status", "-z", "--diff-filter=ACDMRT", *args],
         stdout=subprocess.PIPE,
         stderr=subprocess.DEVNULL,
     )
     if process.returncode != 0:
         return all_files()
-    return [os.fsdecode(raw_path) for raw_path in process.stdout.split(b"\0") if raw_path]
+
+    changes = parse_name_status(process.stdout)
+    if process.stdout and not changes:
+        return all_files()
+
+    current_paths = []
+    for status, paths in changes:
+        kind = status[:1]
+        old_path = paths[0]
+        if kind in {"D", "R"} and is_public_doc_path(old_path):
+            return all_files()
+        current_paths.append(paths[-1])
+    return current_paths
 
 
 def mask_quoted_text(text: str) -> str:
