@@ -125,6 +125,7 @@ HTML_BLOCK_TAGS = {
     "td", "tfoot", "th", "thead", "tr", "ul",
 }
 HTML_TEXT_ATTRS = {"alt", "title", "aria-label", "aria-description", "placeholder"}
+HTML_NON_DOCUMENT_CONTAINERS = {"script", "style", "template"}
 
 
 def default_branch() -> str:
@@ -270,6 +271,7 @@ class HtmlBlockCollector(HTMLParser):
         self.blocks: list[tuple[int, str]] = []
         self.parts: list[str] = []
         self.start_line: int | None = None
+        self.excluded_containers: list[str] = []
 
     def flush(self) -> None:
         text = " ".join(part for part in self.parts if part).strip()
@@ -279,7 +281,15 @@ class HtmlBlockCollector(HTMLParser):
         self.start_line = None
 
     def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
-        if tag.lower() in HTML_BLOCK_TAGS:
+        tag = tag.lower()
+        if tag in HTML_NON_DOCUMENT_CONTAINERS:
+            if not self.excluded_containers:
+                self.flush()
+            self.excluded_containers.append(tag)
+            return
+        if self.excluded_containers:
+            return
+        if tag in HTML_BLOCK_TAGS:
             self.flush()
         line_number = self.getpos()[0]
         for name, value in attrs:
@@ -290,10 +300,20 @@ class HtmlBlockCollector(HTMLParser):
                 self.blocks.append((line_number, text))
 
     def handle_endtag(self, tag: str) -> None:
-        if tag.lower() in HTML_BLOCK_TAGS:
+        tag = tag.lower()
+        if self.excluded_containers:
+            if tag in HTML_NON_DOCUMENT_CONTAINERS:
+                while self.excluded_containers:
+                    opened = self.excluded_containers.pop()
+                    if opened == tag:
+                        break
+            return
+        if tag in HTML_BLOCK_TAGS:
             self.flush()
 
     def handle_data(self, data: str) -> None:
+        if self.excluded_containers:
+            return
         text = " ".join(data.split())
         if not text:
             return
@@ -302,6 +322,8 @@ class HtmlBlockCollector(HTMLParser):
         self.parts.append(text)
 
     def handle_comment(self, data: str) -> None:
+        if self.excluded_containers:
+            return
         self.flush()
         text = " ".join(data.split())
         if text:
