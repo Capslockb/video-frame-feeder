@@ -81,7 +81,7 @@ For each capture attempt, the feeder:
 
 1. Captures an 8×8 grayscale thumbnail with the current `scale=8:8:flags=area,format=gray` raw-video pipeline: 64 bytes, one byte per pixel.
 2. Computes a 64-bit average hash (`aHash`).
-3. Compares it with the last frame selected for delivery.
+3. Compares it with the last hash selected for delivery.
 4. Captures the full JPEG only when the hash changed enough.
 
 A frame is skipped when:
