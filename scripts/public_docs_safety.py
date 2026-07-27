@@ -7,12 +7,22 @@ import os
 import re
 import subprocess
 import sys
+from html.parser import HTMLParser
 from pathlib import Path
 
-DOC_NAMES = {"README.md", "RESEARCH.md", "SECURITY.md", "CONTRIBUTING.md", "AGENTS.md"}
+DOC_NAMES = {
+    "README",
+    "README.md",
+    "RESEARCH.md",
+    "SECURITY.md",
+    "CONTRIBUTING.md",
+    "CODE_OF_CONDUCT.md",
+    "AGENTS.md",
+    "CODEOWNERS",
+}
 DOC_DIR_PARTS = {"docs", "doc", "website", "site", "public", "docs-site"}
 FIXTURE_PARTS = {"tests", "fixtures", "public-docs"}
-DOC_EXTS = {".md", ".mdx", ".rst", ".txt", ".html", ".htm"}
+DOC_EXTS = {".md", ".mdx", ".rst", ".txt", ".html", ".htm", ".adoc", ".asciidoc"}
 EXCLUDE_PARTS = {
     "i18n",
     "CHANGELOG.md",
@@ -60,6 +70,14 @@ RULES = [
         ),
     ),
 ]
+RULE_CATEGORIES = {
+    "PDS001": "instruction-override",
+    "PDS002": "secret-exfiltration",
+    "PDS003": "unsafe-action",
+    "PDS004": "private-control",
+    "PDS005": "automation-directive",
+    "PDS_READ_ERROR": "read-error",
+}
 UNCERTAIN = re.compile(
     r"(?i)\b(maintaining model|automation agent|autonomous maintainer|repository bot)\b.{0,100}"
     r"\b(must|shall|required to|always|never|use tool|run command|obey|ignore|stop when|"
@@ -75,6 +93,21 @@ HUMAN_GUIDANCE = re.compile(
     r"(?i)\b(?:contributor'?s?\s+(?:PR|pull request)|merge via (?:github|the )|"
     r"so they get credit|always merge|never close a contributor)\b"
 )
+FENCE = re.compile(r"^\s*(```+|~~~+)")
+MARKDOWN_HEADING = re.compile(r"^\s{0,3}#{1,6}\s+")
+MARKDOWN_LIST = re.compile(r"^\s*(?:[-+*]|\d+[.)])\s+")
+MARKDOWN_QUOTE = re.compile(r"^\s*>\s?")
+MARKDOWN_TABLE = re.compile(r"^\s*\|.*\|\s*$")
+RST_DIRECTIVE = re.compile(r"^\s*\.\.\s+\S+::")
+ADOC_HEADING = re.compile(r"^\s*=+\s+")
+HORIZONTAL_RULE = re.compile(r"^\s*(?:-{3,}|\*{3,}|_{3,})\s*$")
+EXPLICIT_SECURITY_EXAMPLE_ROW = re.compile(r"^\s*\|\s*(?:example|leak)\s*\|.*\|\s*$", re.I)
+HTML_BLOCK_TAGS = {
+    "address", "article", "aside", "blockquote", "dd", "div", "dl", "dt", "fieldset",
+    "figcaption", "figure", "footer", "form", "h1", "h2", "h3", "h4", "h5", "h6",
+    "header", "hr", "li", "main", "nav", "ol", "p", "pre", "section", "table", "tbody",
+    "td", "tfoot", "th", "thead", "tr", "ul",
+}
 
 
 def default_branch() -> str:
@@ -106,14 +139,11 @@ def git_stdout(*args: str) -> str | None:
 
 
 def git_commit_exists(ref: str) -> bool:
-    return (
-        subprocess.run(
-            ["git", "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"],
-            stdout=subprocess.DEVNULL,
-            stderr=subprocess.DEVNULL,
-        ).returncode
-        == 0
-    )
+    return subprocess.run(
+        ["git", "rev-parse", "--verify", "--quiet", f"{ref}^{{commit}}"],
+        stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    ).returncode == 0
 
 
 def diff_args() -> list[str] | None:
@@ -121,17 +151,8 @@ def diff_args() -> list[str] | None:
         before = os.environ.get("GITHUB_EVENT_BEFORE", "").strip()
         if before and before != ZERO_SHA:
             if git_commit_exists(before):
-                # Compare the old and new snapshots directly. A three-dot range
-                # would compare the merge base to HEAD and can miss content
-                # reintroduced by a force-push.
                 return [before, "HEAD"]
-            # A force-push can make the event's previous revision unavailable.
-            # Full-scan rather than treating a failed diff as an empty safe diff.
             return None
-
-        # Newly created branches can inherit unsafe documents from a stale base.
-        # Full-scan the resulting branch snapshot instead of relying on merge-base
-        # divergence, which excludes inherited content.
         return None
 
     base = f"origin/{default_branch()}"
@@ -144,6 +165,15 @@ def all_files() -> list[str]:
     return [str(path) for path in Path(".").rglob("*") if path.is_file()]
 
 
+def is_pull_request_template(candidate: Path) -> bool:
+    parts = [part.lower() for part in candidate.parts]
+    if not parts or parts[0] != ".github":
+        return False
+    if candidate.name.lower() == "pull_request_template.md":
+        return True
+    return "pull_request_template" in parts[1:-1] and candidate.suffix.lower() in DOC_EXTS
+
+
 def is_public_doc(path: str, include_fixtures: bool = False) -> bool:
     candidate = Path(path)
     if not candidate.exists() or not candidate.is_file():
@@ -151,14 +181,12 @@ def is_public_doc(path: str, include_fixtures: bool = False) -> bool:
     parts = set(candidate.parts)
     if parts & EXCLUDE_PARTS:
         return False
-    if (
-        include_fixtures
-        and FIXTURE_PARTS <= parts
-        and candidate.suffix.lower() in DOC_EXTS
-    ):
+    if include_fixtures and FIXTURE_PARTS <= parts and candidate.suffix.lower() in DOC_EXTS:
         return True
-    return candidate.name in DOC_NAMES or (
-        candidate.suffix.lower() in DOC_EXTS and bool(parts & DOC_DIR_PARTS)
+    return (
+        candidate.name in DOC_NAMES
+        or is_pull_request_template(candidate)
+        or (candidate.suffix.lower() in DOC_EXTS and bool(parts & DOC_DIR_PARTS))
     )
 
 
@@ -205,16 +233,126 @@ def mask_matches(text: str, pattern: re.Pattern[str]) -> str:
 
 def scan_text(path: str, line_number: int, text: str) -> list[tuple[str, int, str]]:
     findings = []
-    unquoted = mask_quoted_text(text)
-    scannable = mask_matches(unquoted, HUMAN_GUIDANCE)
+    strong_source = mask_quoted_text(text) if EXPLICIT_SECURITY_EXAMPLE_ROW.match(text) else text
+    strong_scannable = mask_matches(strong_source, HUMAN_GUIDANCE)
     for rule_id, expression in RULES:
-        if expression.search(scannable):
+        if expression.search(strong_scannable):
             findings.append((path, line_number, rule_id))
-    for clause in CLAUSE_BREAK.split(scannable):
+
+    uncertain_scannable = mask_matches(mask_quoted_text(text), HUMAN_GUIDANCE)
+    for clause in CLAUSE_BREAK.split(uncertain_scannable):
         if UNCERTAIN.search(clause) and not BENIGN_UNCERTAIN.search(clause):
             findings.append((path, line_number, "PDS005"))
             break
     return findings
+
+
+class HtmlBlockCollector(HTMLParser):
+    def __init__(self) -> None:
+        super().__init__(convert_charrefs=True)
+        self.blocks: list[tuple[int, str]] = []
+        self.parts: list[str] = []
+        self.start_line: int | None = None
+
+    def flush(self) -> None:
+        text = " ".join(part for part in self.parts if part).strip()
+        if text:
+            self.blocks.append((self.start_line or 1, text))
+        self.parts = []
+        self.start_line = None
+
+    def handle_starttag(self, tag: str, attrs: list[tuple[str, str | None]]) -> None:
+        if tag.lower() in HTML_BLOCK_TAGS:
+            self.flush()
+
+    def handle_endtag(self, tag: str) -> None:
+        if tag.lower() in HTML_BLOCK_TAGS:
+            self.flush()
+
+    def handle_data(self, data: str) -> None:
+        text = " ".join(data.split())
+        if not text:
+            return
+        if self.start_line is None:
+            self.start_line = self.getpos()[0]
+        self.parts.append(text)
+
+    def close(self) -> None:
+        super().close()
+        self.flush()
+
+
+def html_blocks(lines: list[str]) -> list[tuple[int, str]]:
+    parser = HtmlBlockCollector()
+    try:
+        parser.feed("\n".join(lines))
+        parser.close()
+    except Exception:
+        return []
+    return parser.blocks
+
+
+def text_blocks(path: str, lines: list[str]) -> list[list[tuple[int, str]]]:
+    if Path(path).suffix.lower() in {".html", ".htm"}:
+        return [[(line_number, text)] for line_number, text in html_blocks(lines)]
+
+    blocks: list[list[tuple[int, str]]] = []
+    current: list[tuple[int, str]] = []
+    current_kind = "paragraph"
+    in_fence = False
+
+    def flush() -> None:
+        nonlocal current
+        if current:
+            blocks.append(current)
+            current = []
+
+    for line_number, raw_line in enumerate(lines, start=1):
+        stripped = raw_line.strip()
+        if FENCE.match(raw_line):
+            flush()
+            in_fence = not in_fence
+            current_kind = "fence"
+            continue
+        if not stripped:
+            flush()
+            current_kind = "paragraph"
+            continue
+
+        if not in_fence and (
+            MARKDOWN_HEADING.match(raw_line)
+            or MARKDOWN_TABLE.match(raw_line)
+            or RST_DIRECTIVE.match(raw_line)
+            or ADOC_HEADING.match(raw_line)
+            or HORIZONTAL_RULE.match(raw_line)
+        ):
+            flush()
+            blocks.append([(line_number, stripped)])
+            current_kind = "paragraph"
+            continue
+
+        quote = MARKDOWN_QUOTE.match(raw_line)
+        if quote:
+            if current_kind != "quote":
+                flush()
+                current_kind = "quote"
+            current.append((line_number, raw_line[quote.end():].strip()))
+            continue
+
+        list_item = MARKDOWN_LIST.match(raw_line)
+        if list_item:
+            flush()
+            current_kind = "list"
+            current.append((line_number, raw_line[list_item.end():].strip()))
+            continue
+
+        if current_kind in {"quote", "list"} and not raw_line[:1].isspace():
+            flush()
+            current_kind = "paragraph"
+        current.append((line_number, stripped))
+
+    flush()
+    return blocks
 
 
 def scan_file(path: str) -> list[tuple[str, int, str]]:
@@ -227,19 +365,18 @@ def scan_file(path: str) -> list[tuple[str, int, str]]:
     for line_number, line in enumerate(lines, start=1):
         findings.update(scan_text(path, line_number, line))
 
-    # Scan bounded windows inside one Markdown paragraph so line wrapping cannot
-    # split a risky phrase across physical lines. The window is deliberately
-    # capped at three non-empty lines to avoid joining unrelated sections.
-    for start in range(len(lines)):
-        for size in (2, 3):
-            end = start + size
-            if end > len(lines):
-                continue
-            window_lines = lines[start:end]
-            if any(not line.strip() for line in window_lines):
-                continue
-            text = " ".join(line.strip() for line in window_lines)
-            findings.update(scan_text(path, start + 1, text))
+    for block in text_blocks(path, lines):
+        if len(block) == 1 and Path(path).suffix.lower() in {".html", ".htm"}:
+            line_number, text = block[0]
+            findings.update(scan_text(path, line_number, text))
+            continue
+        for start in range(len(block)):
+            for size in (2, 3):
+                window = block[start:start + size]
+                if len(window) != size:
+                    continue
+                text = " ".join(part for _, part in window)
+                findings.update(scan_text(path, window[0][0], text))
 
     return sorted(findings, key=lambda item: (item[1], item[2]))
 
@@ -259,16 +396,14 @@ def main() -> int:
     files = [path for path in candidates if is_public_doc(path, include_fixtures)]
 
     findings = []
-    # Scan each changed document completely. This intentionally includes
-    # deletion-only edits, because removing separators can change paragraph
-    # semantics without adding a new physical line.
     for path in files:
         findings.extend(scan_file(path))
 
     if findings:
         print("public-docs-safety: FAIL")
         for path, line_number, rule_id in findings:
-            print(f"{display_path(path)}:{line_number}: {rule_id}")
+            category = RULE_CATEGORIES.get(rule_id, "scanner-error")
+            print(f"{display_path(path)}:{line_number}: {rule_id} {category}")
         return 1
 
     print("public-docs-safety: PASS")
