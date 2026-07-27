@@ -114,7 +114,6 @@ MARKDOWN_TABLE = re.compile(r"^\s*\|.*\|\s*$")
 RST_DIRECTIVE = re.compile(r"^\s*\.\.\s+\S+::")
 ADOC_HEADING = re.compile(r"^\s*=+\s+")
 HORIZONTAL_RULE = re.compile(r"^\s*(?:-{3,}|\*{3,}|_{3,})\s*$")
-EXPLICIT_SECURITY_EXAMPLE_ROW = re.compile(r"^\s*\|\s*(?:example|leak)\s*\|.*\|\s*$", re.I)
 HTML_BLOCK_TAGS = {
     "address", "article", "aside", "blockquote", "dd", "div", "dl", "dt", "fieldset",
     "figcaption", "figure", "footer", "form", "h1", "h2", "h3", "h4", "h5", "h6",
@@ -247,8 +246,7 @@ def mask_matches(text: str, pattern: re.Pattern[str]) -> str:
 
 def scan_text(path: str, line_number: int, text: str) -> list[tuple[str, int, str]]:
     findings = []
-    strong_source = mask_quoted_text(text) if EXPLICIT_SECURITY_EXAMPLE_ROW.match(text) else text
-    strong_scannable = mask_matches(strong_source, HUMAN_GUIDANCE)
+    strong_scannable = mask_matches(text, HUMAN_GUIDANCE)
     for rule_id, expression in RULES:
         if expression.search(strong_scannable):
             findings.append((path, line_number, rule_id))
