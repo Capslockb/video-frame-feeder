@@ -114,6 +114,7 @@ MARKDOWN_TABLE = re.compile(r"^\s*\|.*\|\s*$")
 RST_DIRECTIVE = re.compile(r"^\s*\.\.\s+\S+::")
 ADOC_HEADING = re.compile(r"^\s*=+\s+")
 HORIZONTAL_RULE = re.compile(r"^\s*(?:-{3,}|\*{3,}|_{3,})\s*$")
+SOURCE_CONTINUATION = re.compile(r"(?:\\|&&|\|\||\|)\s*$")
 HTML_BLOCK_TAGS = {
     "address", "article", "aside", "blockquote", "dd", "div", "dl", "dt", "fieldset",
     "figcaption", "figure", "footer", "form", "h1", "h2", "h3", "h4", "h5", "h6",
@@ -297,6 +298,12 @@ class HtmlBlockCollector(HTMLParser):
             self.start_line = self.getpos()[0]
         self.parts.append(text)
 
+    def handle_comment(self, data: str) -> None:
+        self.flush()
+        text = " ".join(data.split())
+        if text:
+            self.blocks.append((self.getpos()[0], text))
+
     def close(self) -> None:
         super().close()
         self.flush()
@@ -312,6 +319,15 @@ def html_blocks(lines: list[str]) -> list[tuple[int, str]]:
     return parser.blocks
 
 
+def leading_indent(raw_line: str) -> int:
+    expanded = raw_line.expandtabs(4)
+    return len(expanded) - len(expanded.lstrip())
+
+
+def source_line_continues(raw_line: str) -> bool:
+    return bool(SOURCE_CONTINUATION.search(raw_line))
+
+
 def text_blocks(path: str, lines: list[str]) -> list[list[tuple[int, str]]]:
     if Path(path).suffix.lower() in {".html", ".htm"}:
         return [[(line_number, text)] for line_number, text in html_blocks(lines)]
@@ -320,26 +336,46 @@ def text_blocks(path: str, lines: list[str]) -> list[list[tuple[int, str]]]:
     current: list[tuple[int, str]] = []
     current_kind = "paragraph"
     in_fence = False
+    source_base_indent: int | None = None
+    source_previous_raw = ""
 
     def flush() -> None:
-        nonlocal current
+        nonlocal current, source_base_indent, source_previous_raw
         if current:
             blocks.append(current)
             current = []
+        source_base_indent = None
+        source_previous_raw = ""
 
     for line_number, raw_line in enumerate(lines, start=1):
         stripped = raw_line.strip()
         if FENCE.match(raw_line):
             flush()
             in_fence = not in_fence
-            current_kind = "fence"
+            current_kind = "fence" if in_fence else "paragraph"
             continue
         if not stripped:
             flush()
-            current_kind = "paragraph"
+            if not in_fence:
+                current_kind = "paragraph"
             continue
 
-        if not in_fence and (
+        if in_fence:
+            indent = leading_indent(raw_line)
+            if not current:
+                source_base_indent = indent
+            elif not (
+                source_line_continues(source_previous_raw)
+                or (source_base_indent is not None and indent > source_base_indent)
+            ):
+                flush()
+                source_base_indent = indent
+            current_kind = "fence"
+            current.append((line_number, stripped))
+            source_previous_raw = raw_line
+            continue
+
+        if (
             MARKDOWN_HEADING.match(raw_line)
             or MARKDOWN_TABLE.match(raw_line)
             or RST_DIRECTIVE.match(raw_line)
