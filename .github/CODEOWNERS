@@ -17,6 +17,8 @@ CODEOWNERS @Capslockb
 .github/PULL_REQUEST_TEMPLATE.md @Capslockb
 .github/pull_request_template/ @Capslockb
 .github/PULL_REQUEST_TEMPLATE/ @Capslockb
+.github/issue_template/ @Capslockb
+.github/ISSUE_TEMPLATE/ @Capslockb
 docs/ @Capslockb
 **/docs/** @Capslockb
 doc/ @Capslockb
