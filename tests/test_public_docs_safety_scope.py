@@ -152,7 +152,7 @@ class PublicDocsSafetyScopeTest(unittest.TestCase):
             with self.subTest(path=relative_path), tempfile.TemporaryDirectory() as td:
                 repo = Path(td)
                 candidate = repo / relative_path
-                candidate.parent.mkdir(parents=True)
+                candidate.parent.mkdir(parents=True, exist_ok=True)
                 candidate.write_text(attack + "\n", encoding="utf-8")
 
                 process = subprocess.run(
@@ -182,7 +182,7 @@ class PublicDocsSafetyScopeTest(unittest.TestCase):
             with self.subTest(path=relative_path), tempfile.TemporaryDirectory() as td:
                 repo = Path(td)
                 candidate = repo / relative_path
-                candidate.parent.mkdir(parents=True)
+                candidate.parent.mkdir(parents=True, exist_ok=True)
                 candidate.write_text(attack + "\n", encoding="utf-8")
 
                 process = subprocess.run(
