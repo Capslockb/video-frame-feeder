@@ -45,12 +45,13 @@ class PublicDocsSafetyCasefoldTest(unittest.TestCase):
                 self.assertIn("PDS002", process.stdout)
                 self.assertNotIn(attack, process.stdout)
 
-    def test_push_workflow_is_unfiltered_within_protected_branches(self):
+    def test_push_workflow_matches_every_path_within_protected_branches(self):
         workflow = WORKFLOW.read_text(encoding="utf-8")
         push_block = workflow.split("  push:\n", 1)[1].split("\n\npermissions:", 1)[0]
 
         self.assertIn("branches: [ main, master, release/** ]", push_block)
-        self.assertNotIn("paths:", push_block)
+        self.assertIn("paths:", push_block)
+        self.assertIn("      - '**'", push_block)
         self.assertNotIn("paths-ignore:", push_block)
 
     def test_codeowners_cover_casefolded_names_without_global_ownership(self):
