@@ -35,8 +35,16 @@ on:
       - '**/AGENTS.md'
       - CODEOWNERS
       - '**/CODEOWNERS'
-      - .github/pull_request_template.md
-      - .github/PULL_REQUEST_TEMPLATE.md
+      - pull_request_template.*
+      - PULL_REQUEST_TEMPLATE.*
+      - pull_request_template/**
+      - PULL_REQUEST_TEMPLATE/**
+      - docs/pull_request_template.*
+      - docs/PULL_REQUEST_TEMPLATE.*
+      - docs/pull_request_template/**
+      - docs/PULL_REQUEST_TEMPLATE/**
+      - .github/pull_request_template.*
+      - .github/PULL_REQUEST_TEMPLATE.*
       - .github/pull_request_template/**
       - .github/PULL_REQUEST_TEMPLATE/**
       - .github/issue_template.md
