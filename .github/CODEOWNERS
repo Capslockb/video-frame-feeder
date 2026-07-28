@@ -11,6 +11,14 @@ RESEARCH.md @Capslockb
 SECURITY.md @Capslockb
 CONTRIBUTING.md @Capslockb
 CODE_OF_CONDUCT.md @Capslockb
+/*.md @Capslockb
+/*.MD @Capslockb
+/*.Md @Capslockb
+/*.mD @Capslockb
+.github/*.md @Capslockb
+.github/*.MD @Capslockb
+.github/*.Md @Capslockb
+.github/*.mD @Capslockb
 SUPPORT.md @Capslockb
 GOVERNANCE.md @Capslockb
 AGENTS.md @Capslockb
