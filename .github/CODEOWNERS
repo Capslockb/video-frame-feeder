@@ -21,6 +21,8 @@ docs/pull_request_template.* @Capslockb
 docs/PULL_REQUEST_TEMPLATE.* @Capslockb
 docs/pull_request_template/ @Capslockb
 docs/PULL_REQUEST_TEMPLATE/ @Capslockb
+.github/pull_request_template.md @Capslockb
+.github/PULL_REQUEST_TEMPLATE.md @Capslockb
 .github/pull_request_template.* @Capslockb
 .github/PULL_REQUEST_TEMPLATE.* @Capslockb
 .github/pull_request_template/ @Capslockb
