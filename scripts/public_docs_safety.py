@@ -195,6 +195,8 @@ def is_pull_request_template(candidate: Path) -> bool:
 def is_issue_template(candidate: Path) -> bool:
     """Return whether a path is a contributor-facing Markdown issue template."""
     parts = [part.lower() for part in candidate.parts]
+    if parts == [".github", "issue_template.md"]:
+        return True
     return (
         len(parts) >= 3
         and parts[0] == ".github"
