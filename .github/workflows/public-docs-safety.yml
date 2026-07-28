@@ -31,6 +31,10 @@ on:
       - '**/CONTRIBUTING.md'
       - CODE_OF_CONDUCT.md
       - '**/CODE_OF_CONDUCT.md'
+      - SUPPORT.md
+      - '**/SUPPORT.md'
+      - GOVERNANCE.md
+      - '**/GOVERNANCE.md'
       - AGENTS.md
       - '**/AGENTS.md'
       - CODEOWNERS
