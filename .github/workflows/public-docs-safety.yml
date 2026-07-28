@@ -45,6 +45,14 @@ on:
       - .github/issue_template/**/*.md
       - .github/ISSUE_TEMPLATE/*.md
       - .github/ISSUE_TEMPLATE/**/*.md
+      - issue_template/*.md
+      - issue_template/**/*.md
+      - ISSUE_TEMPLATE/*.md
+      - ISSUE_TEMPLATE/**/*.md
+      - docs/issue_template/*.md
+      - docs/issue_template/**/*.md
+      - docs/ISSUE_TEMPLATE/*.md
+      - docs/ISSUE_TEMPLATE/**/*.md
       - docs/**
       - '**/docs/**'
       - doc/**
