@@ -41,18 +41,12 @@ on:
       - .github/PULL_REQUEST_TEMPLATE/**
       - .github/issue_template.md
       - .github/ISSUE_TEMPLATE.md
-      - .github/issue_template/*.md
-      - .github/issue_template/**/*.md
-      - .github/ISSUE_TEMPLATE/*.md
-      - .github/ISSUE_TEMPLATE/**/*.md
-      - issue_template/*.md
-      - issue_template/**/*.md
-      - ISSUE_TEMPLATE/*.md
-      - ISSUE_TEMPLATE/**/*.md
-      - docs/issue_template/*.md
-      - docs/issue_template/**/*.md
-      - docs/ISSUE_TEMPLATE/*.md
-      - docs/ISSUE_TEMPLATE/**/*.md
+      - .github/issue_template/**
+      - .github/ISSUE_TEMPLATE/**
+      - issue_template/**
+      - ISSUE_TEMPLATE/**
+      - docs/issue_template/**
+      - docs/ISSUE_TEMPLATE/**
       - docs/**
       - '**/docs/**'
       - doc/**
