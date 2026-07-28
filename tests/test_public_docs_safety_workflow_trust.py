@@ -15,19 +15,34 @@ def git(repo: Path, *args: str) -> str:
 
 
 class PublicDocsSafetyWorkflowTrustTest(unittest.TestCase):
-    def test_workflow_runs_pull_request_scan_from_trusted_base_tree(self):
+    def test_required_status_runs_unfiltered_on_every_pull_request(self):
+        workflow = WORKFLOW.read_text(encoding="utf-8")
+        trigger_block = workflow.split("permissions:", 1)[0]
+
+        self.assertIn("  pull_request: {}\n", trigger_block)
+        self.assertNotIn("pull_request:\n    paths:", trigger_block)
+        self.assertIn("candidate-public-docs-safety:", workflow)
+        self.assertIn("if: github.event_name == 'pull_request'", workflow)
+        self.assertIn("name: public-docs-safety", workflow)
+        self.assertIn("name: check out exact candidate head", workflow)
+        self.assertIn("ref: ${{ github.event.pull_request.head.sha }}", workflow)
+        self.assertIn("run: python3 scripts/public_docs_safety.py", workflow)
+        self.assertIn("name: run candidate validator regressions", workflow)
+
+    def test_workflow_preserves_separate_trusted_base_scan(self):
         workflow = WORKFLOW.read_text(encoding="utf-8")
 
         self.assertIn("pull_request_target: {}", workflow)
-        self.assertNotIn("pull_request: {}", workflow)
         self.assertIn("permissions:\n  contents: read", workflow)
+        self.assertIn("trusted-public-docs-safety:", workflow)
+        self.assertIn("if: github.event_name == 'pull_request_target'", workflow)
+        self.assertIn("name: public-docs-safety-trusted", workflow)
         self.assertIn("name: check out trusted validator", workflow)
         self.assertIn("ref: ${{ github.event.pull_request.base.sha }}", workflow)
         self.assertIn("path: trusted", workflow)
         self.assertIn("name: check out untrusted candidate", workflow)
-        self.assertIn("ref: ${{ github.event.pull_request.head.sha }}", workflow)
         self.assertIn("path: candidate", workflow)
-        self.assertGreaterEqual(workflow.count("persist-credentials: false"), 3)
+        self.assertGreaterEqual(workflow.count("persist-credentials: false"), 4)
         self.assertIn("working-directory: candidate", workflow)
         self.assertIn("run: python3 ../trusted/scripts/public_docs_safety.py", workflow)
         self.assertIn("working-directory: trusted", workflow)
