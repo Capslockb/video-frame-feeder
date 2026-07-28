@@ -94,5 +94,15 @@ jobs:
           python-version: '3.x'
       - name: public-docs-safety
         run: python3 scripts/public_docs_safety.py
-      - name: adversarial fixture unittest
-        run: python3 -m unittest discover -s tests -p 'test_public_docs_safety*.py'
+      - name: core scanner unittests
+        run: python3 -m unittest tests.test_public_docs_safety
+      - name: format unittests
+        run: python3 -m unittest tests.test_public_docs_safety_formats
+      - name: push regression unittests
+        run: python3 -m unittest tests.test_public_docs_safety_push_regressions
+      - name: quoted-text unittests
+        run: python3 -m unittest tests.test_public_docs_safety_quoted
+      - name: scope unittests
+        run: python3 -m unittest tests.test_public_docs_safety_scope
+      - name: structural-boundary unittests
+        run: python3 -m unittest tests.test_public_docs_safety_structural_boundaries
