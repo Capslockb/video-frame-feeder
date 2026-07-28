@@ -2,12 +2,34 @@ import subprocess
 import sys
 import tempfile
 import unittest
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "scripts" / "public_docs_safety.py"
 WORKFLOW = ROOT / ".github" / "workflows" / "public-docs-safety.yml"
 CODEOWNERS = ROOT / ".github" / "CODEOWNERS"
+
+
+def codeowner_patterns():
+    patterns = []
+    for line in CODEOWNERS.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if not stripped or stripped.startswith("#"):
+            continue
+        patterns.append(stripped.split()[0])
+    return patterns
+
+
+def codeowners_matches(path, pattern):
+    candidate = PurePosixPath(path)
+    variants = [pattern]
+    if pattern.startswith("**/"):
+        variants.append(pattern[3:])
+    return any(candidate.match(variant) for variant in variants)
+
+
+def is_codeowned(path):
+    return any(codeowners_matches(path, pattern) for pattern in codeowner_patterns())
 
 
 class PublicDocsSafetyCasefoldTest(unittest.TestCase):
@@ -59,28 +81,41 @@ class PublicDocsSafetyCasefoldTest(unittest.TestCase):
         self.assertIn("      - '**'", push_block)
         self.assertNotIn("paths-ignore:", push_block)
 
-    def test_codeowners_cover_casefolded_names_without_global_ownership(self):
-        rules = set(CODEOWNERS.read_text(encoding="utf-8").splitlines())
-        expected = {
-            "**/*.md @Capslockb",
-            "**/*.MD @Capslockb",
-            "**/*.Md @Capslockb",
-            "**/*.mD @Capslockb",
-            "**/?????? @Capslockb",
-            "**/??????.??? @Capslockb",
-            "**/??????.???? @Capslockb",
-            "**/??????.???????? @Capslockb",
-            "**/???????.??? @Capslockb",
-            "**/????????.??? @Capslockb",
-            "**/?????????? @Capslockb",
-            "**/??????????.??? @Capslockb",
-            "**/????????????.??? @Capslockb",
-            "**/???????????????.??? @Capslockb",
-        }
+    def test_codeowners_use_bounded_patterns_for_protected_surfaces(self):
+        patterns = codeowner_patterns()
 
-        self.assertTrue(expected.issubset(rules))
-        self.assertNotIn("* @Capslockb", rules)
-        self.assertNotIn("**/* @Capslockb", rules)
+        self.assertFalse(any("?" in pattern for pattern in patterns))
+        self.assertNotIn("*", patterns)
+        self.assertNotIn("**/*", patterns)
+        self.assertNotIn("**/*.md", patterns)
+        self.assertNotIn("**/*.txt", patterns)
+        self.assertNotIn("**/*.rst", patterns)
+
+        protected_paths = (
+            "README.rst",
+            "readme.RST",
+            "nested/support.md",
+            ".github/GoVeRnAnCe.md",
+            "website/guide.md",
+            "nested/docs/guide.rst",
+            "PULL_REQUEST_TEMPLATE/release.md",
+            ".github/ISSUE_TEMPLATE/bug_report.md",
+        )
+        for path in protected_paths:
+            with self.subTest(path=path):
+                self.assertTrue(is_codeowned(path), path)
+
+        unrelated_paths = (
+            "requirements.txt",
+            "setup.cfg",
+            "video-frame-feeder.py",
+            "assets/image.png",
+            "nested/random.md",
+            "nested/notes.rst",
+        )
+        for path in unrelated_paths:
+            with self.subTest(path=path):
+                self.assertFalse(is_codeowned(path), path)
 
 
 if __name__ == "__main__":
