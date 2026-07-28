@@ -102,7 +102,21 @@ jobs:
         run: python3 -m unittest tests.test_public_docs_safety_push_regressions
       - name: quoted-text unittests
         run: python3 -m unittest tests.test_public_docs_safety_quoted
-      - name: scope unittests
-        run: python3 -m unittest tests.test_public_docs_safety_scope
+      - name: scope document-discovery unittests
+        run: >-
+          python3 -m unittest
+          tests.test_public_docs_safety_scope.PublicDocsSafetyScopeTest.test_deleting_a_paragraph_separator_scans_the_complete_changed_document
+          tests.test_public_docs_safety_scope.PublicDocsSafetyScopeTest.test_markdown_issue_template_is_scanned_metadata_only
+          tests.test_public_docs_safety_scope.PublicDocsSafetyScopeTest.test_root_markdown_issue_template_is_scanned_metadata_only
+          tests.test_public_docs_safety_scope.PublicDocsSafetyScopeTest.test_repository_root_issue_template_directory_is_scanned_metadata_only
+          tests.test_public_docs_safety_scope.PublicDocsSafetyScopeTest.test_docs_issue_template_directory_is_scanned_metadata_only
+          tests.test_public_docs_safety_scope.PublicDocsSafetyScopeTest.test_supported_issue_template_document_formats_are_scanned_metadata_only
+          tests.test_public_docs_safety_scope.PublicDocsSafetyScopeTest.test_issue_form_yaml_remains_an_explicitly_separate_scope
+      - name: scope pull-request-template unittests
+        run: python3 -m unittest tests.test_public_docs_safety_scope.PublicDocsSafetyScopeTest.test_supported_pull_request_template_locations_are_scanned_metadata_only
+      - name: scope workflow-path unittest
+        run: python3 -m unittest tests.test_public_docs_safety_scope.PublicDocsSafetyScopeTest.test_workflow_push_paths_cover_every_scanner_document_family
+      - name: scope codeowners unittest
+        run: python3 -m unittest tests.test_public_docs_safety_scope.PublicDocsSafetyScopeTest.test_codeowners_cover_every_scanner_document_family
       - name: structural-boundary unittests
         run: python3 -m unittest tests.test_public_docs_safety_structural_boundaries
