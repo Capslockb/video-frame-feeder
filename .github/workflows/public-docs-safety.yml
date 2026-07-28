@@ -31,6 +31,14 @@ on:
       - '**/CONTRIBUTING.md'
       - CODE_OF_CONDUCT.md
       - '**/CODE_OF_CONDUCT.md'
+      - '*.md'
+      - '*.MD'
+      - '*.Md'
+      - '*.mD'
+      - '.github/*.md'
+      - '.github/*.MD'
+      - '.github/*.Md'
+      - '.github/*.mD'
       - SUPPORT.md
       - '**/SUPPORT.md'
       - GOVERNANCE.md
@@ -108,5 +116,7 @@ jobs:
         run: python3 -m unittest tests.test_public_docs_safety_quoted
       - name: scope unittests
         run: python3 -m unittest tests.test_public_docs_safety_scope
+      - name: case-insensitive scope unittests
+        run: python3 -m unittest tests.test_public_docs_safety_casefold
       - name: structural-boundary unittests
         run: python3 -m unittest tests.test_public_docs_safety_structural_boundaries
