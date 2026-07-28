@@ -24,6 +24,8 @@ DOC_NAMES = {
     "SECURITY.md",
     "CONTRIBUTING.md",
     "CODE_OF_CONDUCT.md",
+    "SUPPORT.md",
+    "GOVERNANCE.md",
     "AGENTS.md",
     "CODEOWNERS",
 }
