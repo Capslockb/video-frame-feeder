@@ -29,6 +29,7 @@ DOC_NAMES = {
     "AGENTS.md",
     "CODEOWNERS",
 }
+DOC_NAMES_CASEFOLD = {name.casefold() for name in DOC_NAMES}
 DOC_DIR_PARTS = {"docs", "doc", "website", "site", "public", "docs-site"}
 FIXTURE_PARTS = {"tests", "fixtures", "public-docs"}
 DOC_EXTS = {".md", ".mdx", ".rst", ".txt", ".html", ".htm", ".adoc", ".asciidoc"}
@@ -234,7 +235,7 @@ def is_public_doc_path(path: str, include_fixtures: bool = False) -> bool:
     if include_fixtures and FIXTURE_PARTS <= parts and candidate.suffix.lower() in DOC_EXTS:
         return True
     return (
-        candidate.name in DOC_NAMES
+        candidate.name.casefold() in DOC_NAMES_CASEFOLD
         or is_pull_request_template(candidate)
         or is_issue_template(candidate)
         or (candidate.suffix.lower() in DOC_EXTS and bool(parts & DOC_DIR_PARTS))
