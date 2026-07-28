@@ -184,12 +184,27 @@ def all_files() -> list[str]:
 
 
 def is_pull_request_template(candidate: Path) -> bool:
+    """Return whether a path is a contributor-facing pull-request template document."""
     parts = [part.lower() for part in candidate.parts]
-    if not parts or parts[0] != ".github":
+    if not parts or candidate.suffix.lower() not in DOC_EXTS:
         return False
-    if candidate.name.lower() == "pull_request_template.md":
+
+    parent = tuple(parts[:-1])
+    if candidate.stem.lower() == "pull_request_template" and parent in {
+        (),
+        ("docs",),
+        (".github",),
+    }:
         return True
-    return "pull_request_template" in parts[1:-1] and candidate.suffix.lower() in DOC_EXTS
+
+    return (
+        (len(parts) >= 2 and parts[0] == "pull_request_template")
+        or (
+            len(parts) >= 3
+            and parts[0] in {".github", "docs"}
+            and parts[1] == "pull_request_template"
+        )
+    )
 
 
 def is_issue_template(candidate: Path) -> bool:
