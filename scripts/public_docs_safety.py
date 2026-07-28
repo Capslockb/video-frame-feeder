@@ -193,11 +193,11 @@ def is_pull_request_template(candidate: Path) -> bool:
 
 
 def is_issue_template(candidate: Path) -> bool:
-    """Return whether a path is a contributor-facing Markdown issue template."""
+    """Return whether a path is a contributor-facing issue template document."""
     parts = [part.lower() for part in candidate.parts]
     if parts == [".github", "issue_template.md"]:
         return True
-    if candidate.suffix.lower() != ".md":
+    if candidate.suffix.lower() not in DOC_EXTS:
         return False
     return (
         (len(parts) >= 2 and parts[0] == "issue_template")
