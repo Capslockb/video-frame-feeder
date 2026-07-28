@@ -17,7 +17,7 @@ v0.2 content-aware flow:
      `scale=8:8:flags=area,format=gray` raw-video FFmpeg pipeline, its output is
      exactly 64 bytes: one byte per pixel.
   2. When content filtering is enabled, compute a 64-bit average hash and
-     compare it with the last sent hash. Frames below `--min-change` are skipped.
+     compare it with the last hash selected for delivery. Frames below `--min-change` are skipped.
   3. `--stddev-min` defaults to `0`, so uniform-frame filtering is disabled
      unless the user explicitly supplies a positive threshold.
   4. Capture the full-resolution JPEG only after the thumbnail passes the
