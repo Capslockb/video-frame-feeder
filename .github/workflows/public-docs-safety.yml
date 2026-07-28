@@ -1,6 +1,7 @@
 name: public-docs-safety
 
 on:
+  pull_request: {}
   pull_request_target: {}
   push:
     branches: [ main, master, release/** ]
@@ -91,15 +92,45 @@ permissions:
   contents: read
 
 jobs:
-  public-docs-safety:
+  candidate-public-docs-safety:
+    if: github.event_name == 'pull_request'
     name: public-docs-safety
     runs-on: ubuntu-latest
-    env:
-      GITHUB_EVENT_BEFORE: ${{ github.event.before }}
-      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+    steps:
+      - name: check out exact candidate head
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.event.pull_request.head.repo.full_name }}
+          ref: ${{ github.event.pull_request.head.sha }}
+          fetch-depth: 0
+          persist-credentials: false
+      - name: fetch trusted base history for comparison
+        env:
+          BASE_REPOSITORY: ${{ github.repository }}
+          BASE_REF: ${{ github.event.pull_request.base.ref }}
+        run: git fetch --no-tags "https://github.com/${BASE_REPOSITORY}.git" "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+      - name: scan exact candidate head
+        run: python3 scripts/public_docs_safety.py
+      - name: run candidate validator regressions
+        run: |
+          python3 -m unittest tests.test_public_docs_safety
+          python3 -m unittest tests.test_public_docs_safety_formats
+          python3 -m unittest tests.test_public_docs_safety_push_regressions
+          python3 -m unittest tests.test_public_docs_safety_quoted
+          python3 -m unittest tests.test_public_docs_safety_scope
+          python3 -m unittest tests.test_public_docs_safety_casefold
+          python3 -m unittest tests.test_public_docs_safety_structural_boundaries
+          python3 -m unittest tests.test_public_docs_safety_workflow_trust
+
+  trusted-public-docs-safety:
+    if: github.event_name == 'pull_request_target'
+    name: public-docs-safety-trusted
+    runs-on: ubuntu-latest
     steps:
       - name: check out trusted validator
-        if: github.event_name == 'pull_request_target'
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event.pull_request.base.sha }}
@@ -107,7 +138,6 @@ jobs:
           fetch-depth: 1
           persist-credentials: false
       - name: check out untrusted candidate
-        if: github.event_name == 'pull_request_target'
         uses: actions/checkout@v4
         with:
           repository: ${{ github.event.pull_request.head.repo.full_name }}
@@ -116,32 +146,20 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - name: fetch trusted base history for comparison
-        if: github.event_name == 'pull_request_target'
         working-directory: candidate
         env:
           BASE_REPOSITORY: ${{ github.repository }}
           BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: git fetch --no-tags "https://github.com/${BASE_REPOSITORY}.git" "+refs/heads/${BASE_REF}:refs/remotes/origin/${BASE_REF}"
-      - name: check out pushed revision
-        if: github.event_name == 'push'
-        uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-          persist-credentials: false
-      - name: fetch default branch for new-branch comparisons
-        if: github.event_name == 'push' && github.event.created
-        run: git fetch --no-tags origin "+refs/heads/${DEFAULT_BRANCH}:refs/remotes/origin/${DEFAULT_BRANCH}"
       - uses: actions/setup-python@v5
         with:
           python-version: '3.x'
       - name: scan candidate with trusted validator
-        if: github.event_name == 'pull_request_target'
         working-directory: candidate
         env:
           GITHUB_BASE_REF: ${{ github.event.pull_request.base.ref }}
         run: python3 ../trusted/scripts/public_docs_safety.py
       - name: run trusted validator regressions
-        if: github.event_name == 'pull_request_target'
         working-directory: trusted
         run: |
           python3 -m unittest tests.test_public_docs_safety
@@ -152,11 +170,29 @@ jobs:
           python3 -m unittest tests.test_public_docs_safety_casefold
           python3 -m unittest tests.test_public_docs_safety_structural_boundaries
           python3 -m unittest tests.test_public_docs_safety_workflow_trust
+
+  pushed-public-docs-safety:
+    if: github.event_name == 'push'
+    name: public-docs-safety
+    runs-on: ubuntu-latest
+    env:
+      GITHUB_EVENT_BEFORE: ${{ github.event.before }}
+      DEFAULT_BRANCH: ${{ github.event.repository.default_branch }}
+    steps:
+      - name: check out pushed revision
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: fetch default branch for new-branch comparisons
+        if: github.event.created
+        run: git fetch --no-tags origin "+refs/heads/${DEFAULT_BRANCH}:refs/remotes/origin/${DEFAULT_BRANCH}"
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
       - name: scan pushed revision
-        if: github.event_name == 'push'
         run: python3 scripts/public_docs_safety.py
       - name: run pushed-revision validator regressions
-        if: github.event_name == 'push'
         run: |
           python3 -m unittest tests.test_public_docs_safety
           python3 -m unittest tests.test_public_docs_safety_formats
