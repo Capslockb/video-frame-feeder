@@ -197,11 +197,15 @@ def is_issue_template(candidate: Path) -> bool:
     parts = [part.lower() for part in candidate.parts]
     if parts == [".github", "issue_template.md"]:
         return True
+    if candidate.suffix.lower() != ".md":
+        return False
     return (
-        len(parts) >= 3
-        and parts[0] == ".github"
-        and parts[1] == "issue_template"
-        and candidate.suffix.lower() == ".md"
+        (len(parts) >= 2 and parts[0] == "issue_template")
+        or (
+            len(parts) >= 3
+            and parts[0] in {".github", "docs"}
+            and parts[1] == "issue_template"
+        )
     )
 
 
