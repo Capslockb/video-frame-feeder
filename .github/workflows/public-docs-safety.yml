@@ -43,6 +43,8 @@ on:
       - docs/PULL_REQUEST_TEMPLATE.*
       - docs/pull_request_template/**
       - docs/PULL_REQUEST_TEMPLATE/**
+      - .github/pull_request_template.md
+      - .github/PULL_REQUEST_TEMPLATE.md
       - .github/pull_request_template.*
       - .github/PULL_REQUEST_TEMPLATE.*
       - .github/pull_request_template/**
