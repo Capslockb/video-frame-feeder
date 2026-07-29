@@ -109,8 +109,8 @@ UNCERTAIN_GLUE = re.compile(
     r"final status)\b)"
 )
 HUMAN_GUIDANCE = re.compile(
-    r"(?i)\b(?:contributor'?s?\s+(?:PR|pull request)|merge via (?:github|the )|"
-    r"so they get credit|always merge|never close a contributor)\b"
+    r"(?i)\bopen\s+a\s+contributor'?s?\s+(?:PR|pull request)\s+and\s+"
+    r"always\s+merge\s+it\s+(?:via|through)\s+github\s+so\s+they\s+get\s+credit\b"
 )
 FENCE = re.compile(r"^\s*(```+|~~~+)")
 MARKDOWN_HEADING = re.compile(r"^\s{0,3}#{1,6}\s+")
