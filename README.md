@@ -158,3 +158,5 @@ This repository does not currently declare a software license. Do not assume per
 - The repository currently has no automated CI checks.
 
 See [`RESEARCH.md`](RESEARCH.md) for the original Discord video constraints, architecture rationale, and filtering experiments.
+
+> **Public reports:** Keep issues and pull requests focused on reproducible project behavior. Remove credentials, private endpoint details, captured screen content, and sensitive logs; see [`SECURITY.md`](SECURITY.md) for reporting guidance.

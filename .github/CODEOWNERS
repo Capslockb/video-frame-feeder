@@ -1,0 +1,141 @@
+# Bounded ownership for public documentation and its validator.
+# The workflow is the authoritative case-insensitive enforcement layer; CODEOWNERS
+# intentionally lists canonical and representative case variants instead of
+# repository-wide basename-length wildcards.
+
+# Canonical root community-health and README files.
+README @Capslockb
+README.md @Capslockb
+README.mdx @Capslockb
+README.rst @Capslockb
+README.txt @Capslockb
+README.html @Capslockb
+README.htm @Capslockb
+README.adoc @Capslockb
+README.asciidoc @Capslockb
+RESEARCH.md @Capslockb
+SECURITY.md @Capslockb
+CONTRIBUTING.md @Capslockb
+CODE_OF_CONDUCT.md @Capslockb
+SUPPORT.md @Capslockb
+GOVERNANCE.md @Capslockb
+AGENTS.md @Capslockb
+CODEOWNERS @Capslockb
+
+# Protected document basenames (canonical, lowercase, and common title case).
+**/README @Capslockb
+**/readme @Capslockb
+**/Readme @Capslockb
+**/README.md @Capslockb
+**/readme.md @Capslockb
+**/Readme.md @Capslockb
+**/README.mdx @Capslockb
+**/readme.mdx @Capslockb
+**/Readme.mdx @Capslockb
+**/README.rst @Capslockb
+**/readme.rst @Capslockb
+**/Readme.rst @Capslockb
+**/readme.RST @Capslockb
+**/README.txt @Capslockb
+**/readme.txt @Capslockb
+**/Readme.txt @Capslockb
+**/README.html @Capslockb
+**/readme.html @Capslockb
+**/Readme.html @Capslockb
+**/README.htm @Capslockb
+**/readme.htm @Capslockb
+**/Readme.htm @Capslockb
+**/README.adoc @Capslockb
+**/readme.adoc @Capslockb
+**/Readme.adoc @Capslockb
+**/README.asciidoc @Capslockb
+**/readme.asciidoc @Capslockb
+**/Readme.asciidoc @Capslockb
+**/RESEARCH.md @Capslockb
+**/research.md @Capslockb
+**/Research.md @Capslockb
+**/SECURITY.md @Capslockb
+**/security.md @Capslockb
+**/Security.md @Capslockb
+**/CONTRIBUTING.md @Capslockb
+**/contributing.md @Capslockb
+**/Contributing.md @Capslockb
+**/CODE_OF_CONDUCT.md @Capslockb
+**/code_of_conduct.md @Capslockb
+**/Code_Of_Conduct.md @Capslockb
+**/SUPPORT.md @Capslockb
+**/support.md @Capslockb
+**/Support.md @Capslockb
+**/GOVERNANCE.md @Capslockb
+**/governance.md @Capslockb
+**/Governance.md @Capslockb
+**/gOvErNaNcE.md @Capslockb
+**/GoVeRnAnCe.md @Capslockb
+**/AGENTS.md @Capslockb
+**/agents.md @Capslockb
+**/Agents.md @Capslockb
+**/CODEOWNERS @Capslockb
+**/codeowners @Capslockb
+**/Codeowners @Capslockb
+
+# Contributor-facing templates in GitHub-supported locations.
+pull_request_template.* @Capslockb
+PULL_REQUEST_TEMPLATE.* @Capslockb
+pull_request_template/ @Capslockb
+PULL_REQUEST_TEMPLATE/ @Capslockb
+pull_request_template/** @Capslockb
+PULL_REQUEST_TEMPLATE/** @Capslockb
+docs/pull_request_template.* @Capslockb
+docs/PULL_REQUEST_TEMPLATE.* @Capslockb
+docs/pull_request_template/ @Capslockb
+docs/PULL_REQUEST_TEMPLATE/ @Capslockb
+docs/pull_request_template/** @Capslockb
+docs/PULL_REQUEST_TEMPLATE/** @Capslockb
+.github/pull_request_template.md @Capslockb
+.github/PULL_REQUEST_TEMPLATE.md @Capslockb
+.github/pull_request_template.* @Capslockb
+.github/PULL_REQUEST_TEMPLATE.* @Capslockb
+.github/pull_request_template/ @Capslockb
+.github/PULL_REQUEST_TEMPLATE/ @Capslockb
+.github/pull_request_template/** @Capslockb
+.github/PULL_REQUEST_TEMPLATE/** @Capslockb
+.github/issue_template.md @Capslockb
+.github/ISSUE_TEMPLATE.md @Capslockb
+.github/issue_template/ @Capslockb
+.github/ISSUE_TEMPLATE/ @Capslockb
+.github/issue_template/** @Capslockb
+.github/ISSUE_TEMPLATE/** @Capslockb
+issue_template/ @Capslockb
+ISSUE_TEMPLATE/ @Capslockb
+issue_template/** @Capslockb
+ISSUE_TEMPLATE/** @Capslockb
+docs/issue_template/ @Capslockb
+docs/ISSUE_TEMPLATE/ @Capslockb
+docs/issue_template/** @Capslockb
+docs/ISSUE_TEMPLATE/** @Capslockb
+
+# Public-document directory surfaces.
+docs/ @Capslockb
+docs/** @Capslockb
+**/docs/** @Capslockb
+doc/ @Capslockb
+doc/** @Capslockb
+**/doc/** @Capslockb
+website/ @Capslockb
+website/** @Capslockb
+**/website/** @Capslockb
+site/ @Capslockb
+site/** @Capslockb
+**/site/** @Capslockb
+public/ @Capslockb
+public/** @Capslockb
+**/public/** @Capslockb
+docs-site/ @Capslockb
+docs-site/** @Capslockb
+**/docs-site/** @Capslockb
+
+# Guardrail implementation and contract.
+.github/CODEOWNERS @Capslockb
+.github/workflows/public-docs-safety.yml @Capslockb
+scripts/public_docs_safety.py @Capslockb
+tests/test_public_docs_safety*.py @Capslockb
