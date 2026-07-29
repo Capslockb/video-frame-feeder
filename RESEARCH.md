@@ -36,7 +36,7 @@ For each capture attempt, it:
 1. Captures an 8×8 grayscale thumbnail with the current `scale=8:8:flags=area,format=gray` raw-video pipeline: exactly 64 bytes, one byte per pixel.
 2. Computes a 64-bit average hash (`aHash`).
 3. Optionally applies a thumbnail standard-deviation threshold.
-4. Compares the hash with the last frame selected for delivery.
+4. Compares the hash with the last hash selected for delivery.
 5. Captures a full JPEG only when the frame should be sent.
 6. Posts the JPEG to a compatible bridge `/frame` endpoint.
 
