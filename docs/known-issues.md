@@ -6,7 +6,7 @@ Current `main` cannot construct its argument parser because `argparse` reserves 
 
 As a result, normal startup and `python video-frame-feeder.py --help` fail before capture begins. `python -m py_compile video-frame-feeder.py` can still pass because compilation does not execute parser construction.
 
-The executable fix is tracked in [Issue #4](https://github.com/Capslockb/video-frame-feeder/issues/4). Preserve argparse's standard `-h/--help` action and keep `--height` without the conflicting alias, or use a non-conflicting short option after owner review.
+The smallest executable correction is prepared in draft [PR #18](https://github.com/Capslockb/video-frame-feeder/pull/18): remove the conflicting `-h` alias, preserve argparse's standard `-h/--help` action, and retain the long `--height` option with its existing default. The PR remains unapproved and has no exact-head GitHub Actions run; current `main` remains blocked until owner review and manual integration.
 
 No documentation-only change can resolve this runtime defect.
 
