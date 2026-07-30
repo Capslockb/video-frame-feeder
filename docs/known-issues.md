@@ -68,7 +68,7 @@ Until [Issue #15](https://github.com/Capslockb/video-frame-feeder/issues/15) is 
 
 Before entering the capture loop, the feeder prints the complete configured endpoint, the raw capture source, the effective source label, and the first eight FFmpeg command arguments for both capture pipelines. On Windows, those command previews include the `title=...` window selector; an endpoint may also contain query metadata, routing identifiers, user-info, or an accidentally embedded secret.
 
-This disclosure occurs on every successful startup and is therefore separate from Issue #15's HTTP-failure redaction. Supplying a neutral `--source-label` also does not hide the raw `--source` value or FFmpeg input preview covered by Issue #8.
+This disclosure occurs on every successful startup and is therefore separate from Issue #15's HTTP-failure redaction. Supplying a neutral `--source-label` addresses the request-metadata exposure tracked in Issue #8, but it does not hide the raw `--source` value or FFmpeg input preview covered here.
 
 Until [Issue #17](https://github.com/Capslockb/video-frame-feeder/issues/17) is resolved through reviewed logging/privacy work, keep all feeder startup output private, keep endpoint values free of secrets and sensitive query metadata, and avoid sensitive window titles where logs may be retained. The correction must replace raw values with bounded mode/state summaries, remove or redact input specifications from command previews, and add isolated stdout/stderr tests proving that endpoint, window-title, display, and window-ID sentinels are absent.
 
