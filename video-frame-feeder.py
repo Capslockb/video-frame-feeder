@@ -346,7 +346,7 @@ def main():
     )
     parser.add_argument(
         "--once", action="store_true",
-        help="Capture a single frame and exit",
+        help="Capture once; exit 0 when delivered or filtered, 1 on capture/delivery failure",
     )
     parser.add_argument(
         "--display", default="",
@@ -470,6 +470,9 @@ def main():
 
     # Final stats line
     print(f"\nFinal stats: {stats}")
+    if args.once:
+        intentionally_filtered = stats["skipped_uniform"] > 0 or stats["skipped_unchanged"] > 0
+        return 0 if stats["sent"] > 0 or intentionally_filtered else 1
     return 0 if stats["errors"] == 0 else 1
 
 
