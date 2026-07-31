@@ -134,7 +134,7 @@ This tool captures visible screen content and transmits it to the configured end
 - keep feeder failure output private: raw HTTP exception text can currently reproduce endpoint URLs, query parameters, source-label metadata, or redirect targets until [Issue #15](https://github.com/Capslockb/video-frame-feeder/issues/15) is resolved;
 - keep routine startup output private as well: it currently prints the complete endpoint, raw capture source, effective source label, and FFmpeg command prefixes. On Windows, this can reproduce a selected window title even when a neutral `--source-label` is supplied. The redaction work is tracked in [Issue #17](https://github.com/Capslockb/video-frame-feeder/issues/17).
 
-The feeder only supplies the `source` query parameter. Whether that value is retained in bridge, proxy, webhook, or telemetry logs depends on the receiving deployment.
+For source metadata, the feeder supplies only the `source` query parameter; `--force` separately adds `force=true`. Whether the source value is retained in bridge, proxy, webhook, or telemetry logs depends on the receiving deployment.
 
 ## License status
 
@@ -155,6 +155,6 @@ This repository does not currently declare a software license. Do not assume per
 - Capture dimensions and interval values are not fully validated. Keep width and height positive, and use a finite interval value; `nan` or infinite intervals can fail only after the first continuous-mode iteration. The parser fix is tracked in [Issue #10](https://github.com/Capslockb/video-frame-feeder/issues/10).
 - Content-filter thresholds are not fully validated. Keep `--min-change` within 0–64 and `--stddev-min` finite and within 0–255; `nan` currently bypasses the standard-deviation filter. The parser fix is tracked in [Issue #5](https://github.com/Capslockb/video-frame-feeder/issues/5).
 - In the filtered path, the current hash baseline advances before full-frame capture and bridge acceptance. A transient capture failure, HTTP or JSON failure, or `accepted: false` response can therefore suppress the next unchanged frame until the screen changes enough to cross `--min-change`. The accepted correction is tracked in [Issue #11](https://github.com/Capslockb/video-frame-feeder/issues/11).
-- The repository currently has no automated CI checks.
+- The default branch currently contains no automated CI workflow or required check.
 
 See [`RESEARCH.md`](RESEARCH.md) for the original Discord video constraints, architecture rationale, and filtering experiments.
