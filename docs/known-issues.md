@@ -44,7 +44,13 @@ Owner review has accepted this correction for implementation. The pending code c
 
 The process exit status currently reflects capture errors only. In `--once` mode, an HTTP failure or a bridge response with `accepted: false` is logged, but the process can still exit with status `0` when capture itself succeeded.
 
-Do not use the current `--once` exit code as proof that a frame reached or was accepted by the bridge. The executable transport/lifecycle fix and required exit-semantics decision are tracked in [Issue #6](https://github.com/Capslockb/video-frame-feeder/issues/6). Continuous mode is expected to keep logging delivery failures without terminating unless the owner chooses a different policy.
+Do not use the current `--once` exit code as proof that a frame reached or was accepted by the bridge.
+
+Draft [PR #19](https://github.com/Capslockb/video-frame-feeder/pull/19) prepares a focused executable correction stacked on PR #18. It proposes status `0` for accepted delivery or an intentional content-filter skip, status `1` for full-frame capture failure or unsuccessful delivery, and no change to continuous-mode exit behavior. Its tests use synthetic bytes and mocks only.
+
+At exact head `90685b584ada162abbd3f58e5e4e8b5362739de2`, [`cli-smoke` run 5](https://github.com/Capslockb/video-frame-feeder/actions/runs/30661612345) passed compilation and the complete unittest discovery on Python 3.11, 3.12, and 3.13. The PR has no inline review thread or submitted review.
+
+The remaining owner decision is whether an intentional content-filter skip should count as successful one-shot completion even though no frame is delivered. After PR #18 is integrated, PR #19 must be refreshed or retargeted against current `main`, revalidated if its head changes, explicitly reviewed by the owner, and integrated manually. Reliable one-shot delivery exit status remains unsupported until that process is complete.
 
 ## Bridge response JSON is not schema-validated
 
