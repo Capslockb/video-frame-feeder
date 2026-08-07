@@ -1,60 +1,40 @@
 #!/usr/bin/env python3
 """
-video-frame-feeder.py — Capture screen/window and POST frames to the voice bridge.
+video-frame-feeder.py — Capture screen/window frames and POST selected JPEGs to the voice bridge.
 
 Usage:
     python video-frame-feeder.py --endpoint http://127.0.0.1:18943/frame
 
-Requires: ffmpeg, x11grab (Linux) or avfoundation (macOS) or gdigrab (Windows),
-plus the Python `requests` package (already a hermes-agent dependency).
+Requires: ffmpeg with x11grab (Linux), avfoundation (macOS), or gdigrab
+(Windows), plus the Python `requests` package.
 
-This is a wallet-safe external feeder — it only runs when YOU start it,
-and the bridge's existing gating (1fps cap, audio-gating, 512KB limit)
-still applies on the receiving end.
+The feeder runs only when started explicitly. The receiving bridge still applies
+its own frame-rate, audio-gating, and payload-size limits.
 
-v0.2 — content-aware filtering (white-page protection):
+v0.2 content-aware flow:
 
-The previous version sent every frame at 1 fps regardless of content.
-That meant a locked screen, Discord overlay, or static desktop all
-flowed a continuous stream of "white" / "black" / "still" frames into
-Gemini, where the model would honestly describe "I see a white page".
-That's wasted tokens and a broken user experience.
+  1. Capture an 8×8 grayscale thumbnail first. With the current
+     `scale=8:8:flags=area,format=gray` raw-video FFmpeg pipeline, its output is
+     exactly 64 bytes: one byte per pixel.
+  2. When content filtering is enabled, compute a 64-bit average hash and
+     compare it with the last hash selected for delivery. Frames below `--min-change` are skipped.
+  3. `--stddev-min` defaults to `0`, so uniform-frame filtering is disabled
+     unless the user explicitly supplies a positive threshold.
+  4. Capture the full-resolution JPEG only after the thumbnail passes the
+     selection checks.
+  5. If thumbnail capture fails, fall back to capturing and sending the full
+     frame without thumbnail filtering.
 
-This version:
+Relevant flags:
 
-  1. Captures the full frame as JPEG (the high-quality path).
-  2. ALSO captures a tiny 8x8 grayscale thumbnail via a second ffmpeg
-     pipe — this is ~256 bytes of data, fast to compute against.
-  3. Computes a 64-bit perceptual hash (average hash) on the thumbnail.
-  4. Computes the standard deviation across the 64 pixels — near-zero
-     stddev means the frame is essentially one solid color (the
-     "white page" case). We skip those entirely.
-  5. Compares the hash to the last-sent hash. Identical → skip. Within
-     `--min-change` hamming distance → skip.
-  6. Only sends the JPEG when the screen has actually changed.
-
-This cuts the "static screen" case from 1 frame/sec → 0 frames/sec.
-It also gives Gemini something meaningful to look at when the user
-genuinely starts sharing a real screen — the first non-trivial frame
-arrives within 1 second of the screen content actually changing.
-
-New CLI flags:
-
-  --min-change N        Hamming-distance threshold (0-64). Default 2.
-                        Lower = more sensitive (more frames sent).
-                        Higher = more aggressive deduplication.
-  --stddev-min F        Minimum pixel stddev (0-255) to consider a
-                        frame as containing real content. Default 6.0.
-                        Anything below this is treated as a solid
-                        color and skipped.
-  --no-content-filter   Disable hash/stddev filtering (send every
-                        frame, like v0.1). Useful for debugging.
-  --source-label TEXT   Label passed to the bridge via ?source= and
-                        included in the "video_initialized" webhook
-                        announce. Default: the value of --source.
-
-The full-resolution JPEG is only generated when we're actually going
-to send it. The thumbnail is always generated to decide.
+  --min-change N        Minimum hash Hamming distance required to send.
+                        Default: 2.
+  --stddev-min F        Minimum thumbnail pixel standard deviation.
+                        Default: 0, which disables uniform-frame filtering.
+  --no-content-filter   Send every successfully captured frame.
+  --source-label TEXT   Label URL-encoded into the `source` query parameter
+                        (`?source=...`) and included in the video-initialized
+                        notification. Defaults to --source.
 """
 
 import argparse
