@@ -2,7 +2,7 @@
 
 **Original research date:** 2026-05-27  
 **Implementation update:** 2026-06-07  
-**Documentation status checked:** 2026-07-27
+**Documentation status checked:** 2026-08-07
 
 > [!IMPORTANT]
 > This document combines a historical research snapshot with the behavior shipped in this repository.
@@ -156,8 +156,10 @@ In the ordinary filtered path, the implementation currently stores a selected ha
 --display DISPLAY     Linux X11 display
 --force               Add force=true to the request; bridge behavior is endpoint-defined
 --once                Run one capture attempt and exit
---min-change N        Hamming-distance threshold, 0–64; default 2
---stddev-min F        Thumbnail pixel standard-deviation threshold; default 0
+--min-change N        Intended Hamming-distance range 0–64; default 2;
+                      parser does not currently enforce the range
+--stddev-min F        Intended finite thumbnail standard-deviation range 0–255;
+                      default 0; parser does not currently enforce the range
 --no-content-filter   Disable hash and variance filtering
 --source-label TEXT   URL-encoded as the bridge's `source` query parameter;
                       currently defaults to `--source`
