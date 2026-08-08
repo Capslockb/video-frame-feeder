@@ -18,7 +18,7 @@ Out-of-range values can silently change behavior: a `--min-change` value above 6
 
 Until argument validation is implemented through reviewed executable work, keep `--min-change` within 0–64 and use a finite `--stddev-min` within 0–255. The implementation task is tracked in [Issue #5](https://github.com/Capslockb/video-frame-feeder/issues/5) so it does not become entangled with the startup fix.
 
-Owner review has accepted the focused validation change. The eventual parser fix must explicitly reject NaN and positive or negative infinity rather than relying only on ordinary lower/upper-bound comparisons. Boundary tests should cover `0`, `64`, `0.0`, and `255.0`, plus negative, above-range, `nan`, `inf`, and `-inf` inputs. No executable correction or exact-head CI evidence is present yet.
+Draft [PR #21](https://github.com/Capslockb/video-frame-feeder/pull/21) now prepares the focused parser correction, stacked on PR #18. At exact head `1d3077e05632807c3b4e0c9d526d2d25d40c1c08`, [`cli-smoke` run 10](https://github.com/Capslockb/video-frame-feeder/actions/runs/31272179261) passed compilation and the complete test discovery on Python 3.11, 3.12, and 3.13, including accepted boundaries plus negative, above-range, non-integer, `nan`, `inf`, and `-inf` inputs. One exact-head owner `COMMENTED` review confirms the validation evidence but explicitly is not an approval. Because the PR changes executable Python and tests and is based on PR #18, it remains draft and unapproved; after PR #18 is integrated it must be refreshed or retargeted, revalidated if its head changes, explicitly owner-approved, and integrated manually. Current `main` still does not enforce these ranges.
 
 ## Average-hash filtering can miss global brightness changes
 
