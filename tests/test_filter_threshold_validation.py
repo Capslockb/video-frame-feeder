@@ -60,7 +60,7 @@ class FilterThresholdValidationTests(unittest.TestCase):
     def test_stddev_min_rejects_out_of_range_and_non_finite_values(self) -> None:
         for value in ("-1", "256", "nan", "inf", "-inf", "not-a-number"):
             with self.subTest(value=value):
-                result = self.run_cli("--stddev-min", value, "--help")
+                result = self.run_cli(f"--stddev-min={value}", "--help")
                 self.assertEqual(result.returncode, 2)
                 self.assertIn("must be a finite number from 0 through 255", result.stderr)
                 self.assertNotIn("Traceback", result.stderr)
