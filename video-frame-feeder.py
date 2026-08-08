@@ -59,6 +59,7 @@ to send it. The thumbnail is always generated to decide.
 
 import argparse
 import io
+import math
 import os
 import signal
 import struct
@@ -311,6 +312,28 @@ def post_frame(endpoint: str, data: bytes, force: bool = False, source_label: st
 # ── main loop ──────────────────────────────────────────────────────────────
 
 
+def parse_min_change(value: str) -> int:
+    """Parse a valid 64-bit Hamming-distance threshold for argparse."""
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be an integer from 0 through 64") from exc
+    if not 0 <= parsed <= 64:
+        raise argparse.ArgumentTypeError("must be an integer from 0 through 64")
+    return parsed
+
+
+def parse_stddev_min(value: str) -> float:
+    """Parse a finite grayscale standard-deviation threshold for argparse."""
+    try:
+        parsed = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a finite number from 0 through 255") from exc
+    if not math.isfinite(parsed) or not 0.0 <= parsed <= 255.0:
+        raise argparse.ArgumentTypeError("must be a finite number from 0 through 255")
+    return parsed
+
+
 def main():
     parser = argparse.ArgumentParser(
         description="Feed video frames from screen/window to the voice bridge"
@@ -353,11 +376,11 @@ def main():
         help="X11 display to use (default: $DISPLAY or :0.0)",
     )
     parser.add_argument(
-        "--min-change", type=int, default=2,
+        "--min-change", type=parse_min_change, default=2,
         help="Hamming distance (0-64) required to consider a frame changed (default: 2)",
     )
     parser.add_argument(
-        "--stddev-min", type=float, default=0,
+        "--stddev-min", type=parse_stddev_min, default=0,
         help="Min pixel stddev (0-255) to treat a frame as real content (default: 0 = disabled)",
     )
     parser.add_argument(
