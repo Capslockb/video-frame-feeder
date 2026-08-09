@@ -23,7 +23,7 @@ ffmpeg -version
 
 ## Quick start
 
-> **Current startup blocker:** `main` cannot construct the CLI because `-h` is assigned to both argparse help and `--height`. The commands below will fail until [Issue #4](https://github.com/Capslockb/video-frame-feeder/issues/4) is fixed through a reviewed code change. Do not disable argparse's standard help action as a workaround.
+> **Current startup blocker:** `main` cannot construct the CLI because `-h` is assigned to both argparse help and `--height`. The commands below will fail until [Issue #4](https://github.com/Capslockb/video-frame-feeder/issues/4) is fixed. Do not disable argparse's standard help action as a workaround.
 
 ```bash
 # Default: screen capture at 1 fps with content-aware filtering
@@ -154,7 +154,7 @@ This repository does not currently declare a software license. Do not assume per
 - `--force` adds a request parameter but does not guarantee that the receiving endpoint recognizes or honors it. It also does not safely preserve an endpoint's existing query string; use a query-free endpoint until [Issue #9](https://github.com/Capslockb/video-frame-feeder/issues/9) is resolved.
 - Capture dimensions and interval values are not fully validated. Keep width and height positive, and use a finite interval value; `nan` or infinite intervals can fail only after the first continuous-mode iteration. The parser fix is tracked in [Issue #10](https://github.com/Capslockb/video-frame-feeder/issues/10).
 - Content-filter thresholds are not fully validated. Keep `--min-change` within 0–64 and `--stddev-min` finite and within 0–255; `nan` currently bypasses the standard-deviation filter. The parser fix is tracked in [Issue #5](https://github.com/Capslockb/video-frame-feeder/issues/5).
-- In the filtered path, the current hash baseline advances before full-frame capture and bridge acceptance. A transient capture failure, HTTP or JSON failure, or `accepted: false` response can therefore suppress the next unchanged frame until the screen changes enough to cross `--min-change`. The accepted correction is tracked in [Issue #11](https://github.com/Capslockb/video-frame-feeder/issues/11).
+- In the filtered path, the current hash baseline advances before full-frame capture and bridge acceptance. A transient capture failure, HTTP or JSON failure, or `accepted: false` response can therefore suppress the next unchanged frame until the screen changes enough to cross `--min-change`. The retry-state correction is tracked in [Issue #11](https://github.com/Capslockb/video-frame-feeder/issues/11).
 - The default branch currently contains no automated CI workflow or required check.
 
 See [`RESEARCH.md`](RESEARCH.md) for the original Discord video constraints, architecture rationale, and filtering experiments.
