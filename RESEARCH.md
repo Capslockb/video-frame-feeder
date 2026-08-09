@@ -2,7 +2,7 @@
 
 **Original research date:** 2026-05-27  
 **Implementation update:** 2026-06-07  
-**Documentation status checked:** 2026-08-07
+**Documentation status checked:** 2026-08-09
 
 > [!IMPORTANT]
 > This document combines a historical research snapshot with the behavior shipped in this repository.
@@ -10,7 +10,7 @@
 
 ## Current operational blockers
 
-The flow described below is implemented in the repository, but current `main` cannot construct its CLI because `-h` is assigned to both argparse help and `--height`. All commands fail before capture begins until [Issue #4](https://github.com/Capslockb/video-frame-feeder/issues/4) is resolved through reviewed executable work.
+The flow described below is implemented in the repository, but current `main` cannot construct its CLI because `-h` is assigned to both argparse help and `--height`. All commands fail before capture begins until [Issue #4](https://github.com/Capslockb/video-frame-feeder/issues/4) is resolved.
 
 Additional current boundaries:
 
@@ -20,12 +20,12 @@ Additional current boundaries:
 - `--force` does not safely merge an endpoint's existing query string; use a query-free endpoint while [Issue #9](https://github.com/Capslockb/video-frame-feeder/issues/9) remains open;
 - capture dimensions and interval values are not fully validated; keep dimensions positive and the interval finite while [Issue #10](https://github.com/Capslockb/video-frame-feeder/issues/10) remains open;
 - filter-threshold ranges are documented but not enforced; see [Issue #5](https://github.com/Capslockb/video-frame-feeder/issues/5);
-- the filtered-path hash baseline advances before full-frame capture and bridge acceptance, so a transient failure can suppress an unchanged retry; see accepted [Issue #11](https://github.com/Capslockb/video-frame-feeder/issues/11);
-- average hash can miss material global-brightness changes that preserve relative pixel structure; see accepted [Issue #12](https://github.com/Capslockb/video-frame-feeder/issues/12);
-- successful HTTP responses are not schema-validated: non-object JSON can terminate the loop, while a truthy non-boolean `accepted` value can be miscounted as success; see accepted [Issue #13](https://github.com/Capslockb/video-frame-feeder/issues/13);
-- frame POSTs follow redirects, so HTTP 307 or 308 can resend the captured JPEG beyond the configured endpoint; use a direct non-redirecting endpoint while accepted [Issue #14](https://github.com/Capslockb/video-frame-feeder/issues/14) remains open;
-- routine HTTP failure output can reproduce endpoint URLs, query metadata, source labels, and followed redirect targets; keep raw feeder logs private while accepted [Issue #15](https://github.com/Capslockb/video-frame-feeder/issues/15) remains open; and
-- routine startup diagnostics print the complete endpoint, raw capture source, effective source label, and FFmpeg command prefixes; keep startup output private while accepted [Issue #17](https://github.com/Capslockb/video-frame-feeder/issues/17) remains open.
+- the filtered-path hash baseline advances before full-frame capture and bridge acceptance, so a transient failure can suppress an unchanged retry; see [Issue #11](https://github.com/Capslockb/video-frame-feeder/issues/11);
+- average hash can miss material global-brightness changes that preserve relative pixel structure; see [Issue #12](https://github.com/Capslockb/video-frame-feeder/issues/12);
+- successful HTTP responses are not schema-validated: non-object JSON can terminate the loop, while a truthy non-boolean `accepted` value can be miscounted as success; see [Issue #13](https://github.com/Capslockb/video-frame-feeder/issues/13);
+- frame POSTs follow redirects, so HTTP 307 or 308 can resend the captured JPEG beyond the configured endpoint; use a direct non-redirecting endpoint while [Issue #14](https://github.com/Capslockb/video-frame-feeder/issues/14) remains open;
+- routine HTTP failure output can reproduce endpoint URLs, query metadata, source labels, and followed redirect targets; keep raw feeder logs private while [Issue #15](https://github.com/Capslockb/video-frame-feeder/issues/15) remains open; and
+- routine startup diagnostics print the complete endpoint, raw capture source, effective source label, and FFmpeg command prefixes; keep startup output private while [Issue #17](https://github.com/Capslockb/video-frame-feeder/issues/17) remains open.
 
 ## Current repository status
 
@@ -130,7 +130,7 @@ Each pixel is compared with the thumbnail mean to produce a 64-bit average hash.
 
 A frame is skipped when its distance is lower than `--min-change`.
 
-Because the comparison is relative to each thumbnail's own mean, the hash is not luminance-complete. Uniform black, gray, and white thumbnails all produce the same zero hash, and a material brightness shift that preserves relative pixel ordering can preserve the full hash. Until [Issue #12](https://github.com/Capslockb/video-frame-feeder/issues/12) is implemented through reviewed executable work, use `--no-content-filter` when blank-screen, lock-screen, theme, or large luminance transitions must always be offered to the bridge.
+Because the comparison is relative to each thumbnail's own mean, the hash is not luminance-complete. Uniform black, gray, and white thumbnails all produce the same zero hash, and a material brightness shift that preserves relative pixel ordering can preserve the full hash. Until [Issue #12](https://github.com/Capslockb/video-frame-feeder/issues/12) is resolved, use `--no-content-filter` when blank-screen, lock-screen, theme, or large luminance transitions must always be offered to the bridge.
 
 ### Optional uniform-frame filter
 
@@ -142,7 +142,7 @@ This is disabled by default because an 8×8 thumbnail is too coarse to safely di
 
 Thumbnail-pipeline failure must not cause a permanent blackout. The implementation logs the failure, captures the full frame, and attempts delivery without content analysis for that iteration.
 
-In the ordinary filtered path, the implementation currently stores a selected hash before full-frame capture and before the bridge reports `accepted: true`. Full-frame capture failure, HTTP or JSON failure, and bridge rejection can therefore leave unchanged content ineligible for the next attempt. Accepted [Issue #11](https://github.com/Capslockb/video-frame-feeder/issues/11) requires the complete selected signature to remain pending until successful bridge acceptance.
+In the ordinary filtered path, the implementation currently stores a selected hash before full-frame capture and before the bridge reports `accepted: true`. Full-frame capture failure, HTTP or JSON failure, and bridge rejection can therefore leave unchanged content ineligible for the next attempt. [Issue #11](https://github.com/Capslockb/video-frame-feeder/issues/11) tracks changing the baseline so it advances only after successful bridge acceptance.
 
 ## Current CLI reference
 
