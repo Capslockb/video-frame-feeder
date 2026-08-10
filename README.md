@@ -111,7 +111,7 @@ The parser does not currently reject out-of-range thresholds or non-finite `--st
 --endpoint URL        Bridge /frame endpoint
 --interval SECONDS    Capture interval; finite values below 1.0 are clamped to 1.0
 --source VALUE        screen, X11 window ID, or Windows window title
---width / --height    Positive capture dimensions; defaults to 768×768
+--width / --height    Capture dimensions; intended to be positive; defaults to 768×768
 --x / --y             Linux screen-region offset
 --display DISPLAY     Linux X11 display
 --force               Add force=true to the request; receiving-bridge behavior varies
