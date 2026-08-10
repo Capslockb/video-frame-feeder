@@ -338,7 +338,7 @@ def main():
         "--width", "-w", type=int, default=768, help="Capture width (Gemini-native default: 768)",
     )
     parser.add_argument(
-        "--height", "-h", type=int, default=768, help="Capture height (Gemini-native default: 768)",
+        "--height", type=int, default=768, help="Capture height (Gemini-native default: 768)",
     )
     parser.add_argument(
         "--force", action="store_true",
