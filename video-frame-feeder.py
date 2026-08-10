@@ -176,7 +176,7 @@ def get_thumb_cmd(source: str, x: int, y: int, w: int, h: int, display: str = ""
             cmd = [
                 "ffmpeg", "-y", "-f", "gdigrab", "-r", str(fps),
                 "-i", f"title={source}",
-                "-s", f"{w}x{h}",
+                "-s", f"{w}x{h}", "-i", disp,
             ]
     else:
         raise RuntimeError(f"Unsupported platform: {plat}")
@@ -295,6 +295,7 @@ def post_frame(endpoint: str, data: bytes, force: bool = False, source_label: st
         # urllib-style safe quoting; requests will accept this verbatim
         from urllib.parse import quote
         url = f"{url}{sep}source={quote(source_label, safe='')}"
+
     try:
         resp = requests.post(
             url,
@@ -302,10 +303,28 @@ def post_frame(endpoint: str, data: bytes, force: bool = False, source_label: st
             headers={"Content-Type": "image/jpeg"},
             timeout=5,
         )
+    except requests.Timeout:
+        return {"accepted": False, "reason": "http_timeout"}
+    except requests.ConnectionError:
+        return {"accepted": False, "reason": "http_connection_error"}
+    except requests.RequestException:
+        return {"accepted": False, "reason": "http_transport_error"}
+
+    try:
         resp.raise_for_status()
+    except requests.HTTPError as error:
+        response = getattr(error, "response", None) or resp
+        status = getattr(response, "status_code", None)
+        if isinstance(status, int):
+            return {"accepted": False, "reason": f"http_status:{status}"}
+        return {"accepted": False, "reason": "http_status_error"}
+    except requests.RequestException:
+        return {"accepted": False, "reason": "http_transport_error"}
+
+    try:
         return resp.json()
-    except requests.RequestException as e:
-        return {"accepted": False, "reason": f"http_error: {e}"}
+    except (ValueError, requests.RequestException):
+        return {"accepted": False, "reason": "http_response_decode_error"}
 
 
 # ── main loop ──────────────────────────────────────────────────────────────
