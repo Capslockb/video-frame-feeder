@@ -66,6 +66,7 @@ import subprocess
 import sys
 import time
 from typing import Optional, Tuple
+from urllib.parse import parse_qsl, urlencode, urlsplit, urlunsplit
 
 import requests
 
@@ -288,13 +289,19 @@ def should_send(
 # ── HTTP POST ──────────────────────────────────────────────────────────────
 
 
-def post_frame(endpoint: str, data: bytes, force: bool = False, source_label: str = "") -> dict:
-    url = f"{endpoint}?force=true" if force else endpoint
+def _build_frame_url(endpoint: str, force: bool = False, source_label: str = "") -> str:
+    """Return the frame endpoint with feeder-owned query parameters merged safely."""
+    parts = urlsplit(endpoint)
+    query = parse_qsl(parts.query, keep_blank_values=True)
+    if force:
+        query.append(("force", "true"))
     if source_label:
-        sep = "&" if "?" in url else "?"
-        # urllib-style safe quoting; requests will accept this verbatim
-        from urllib.parse import quote
-        url = f"{url}{sep}source={quote(source_label, safe='')}"
+        query.append(("source", source_label))
+    return urlunsplit(parts._replace(query=urlencode(query, doseq=True)))
+
+
+def post_frame(endpoint: str, data: bytes, force: bool = False, source_label: str = "") -> dict:
+    url = _build_frame_url(endpoint, force=force, source_label=source_label)
     try:
         resp = requests.post(
             url,
