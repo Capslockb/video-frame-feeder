@@ -46,7 +46,8 @@ class CaptureArgumentValidationTests(unittest.TestCase):
         )
 
         self.assertEqual(result.returncode, 0, result.stderr)
-        self.assertIn("values below 1.0 are clamped to 1.0", result.stdout)
+        normalized_help = " ".join(result.stdout.split())
+        self.assertIn("values below 1.0 are clamped to 1.0", normalized_help)
         self.assertNotIn("Traceback", result.stderr)
 
     def test_default_help_preserves_capture_defaults(self) -> None:
