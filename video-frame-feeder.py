@@ -301,7 +301,10 @@ def post_frame(endpoint: str, data: bytes, force: bool = False, source_label: st
             data=data,
             headers={"Content-Type": "image/jpeg"},
             timeout=5,
+            allow_redirects=False,
         )
+        if 300 <= resp.status_code < 400:
+            return {"accepted": False, "reason": f"http_redirect:{resp.status_code}"}
         resp.raise_for_status()
         return resp.json()
     except requests.RequestException as e:
