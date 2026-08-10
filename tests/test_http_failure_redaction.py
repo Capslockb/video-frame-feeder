@@ -13,7 +13,8 @@ ROOT = Path(__file__).resolve().parents[1]
 SCRIPT = ROOT / "video-frame-feeder.py"
 SENTINEL = "secret-route-token"
 ENDPOINT = f"https://user:{SENTINEL}@bridge.example/frame?route={SENTINEL}#private"
-SOURCE = f"Customer Window {SENTINEL}"
+SOURCE = f"Client ședință {SENTINEL}.pdf"
+SOURCE_MARKERS = ("Client", "ședință", ".pdf", SENTINEL)
 
 
 class RequestException(Exception):
@@ -86,16 +87,18 @@ class HttpFailureRedactionTests(unittest.TestCase):
 
     def assert_bounded_reason(self, result: dict, expected: str) -> None:
         self.assertEqual(result, {"accepted": False, "reason": expected})
-        self.assertNotIn(SENTINEL, result["reason"])
         self.assertNotIn("bridge.example", result["reason"])
+        for marker in SOURCE_MARKERS:
+            self.assertNotIn(marker, result["reason"])
 
         stdout = io.StringIO()
         stderr = io.StringIO()
         with contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
             print(result["reason"])
         output = stdout.getvalue() + stderr.getvalue()
-        self.assertNotIn(SENTINEL, output)
         self.assertNotIn("bridge.example", output)
+        for marker in SOURCE_MARKERS:
+            self.assertNotIn(marker, output)
 
     def test_timeout_is_bounded_and_redacted(self) -> None:
         REQUESTS.post_error = Timeout(f"timed out requesting {ENDPOINT}")
