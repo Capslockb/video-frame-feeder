@@ -176,7 +176,7 @@ def get_thumb_cmd(source: str, x: int, y: int, w: int, h: int, display: str = ""
             cmd = [
                 "ffmpeg", "-y", "-f", "gdigrab", "-r", str(fps),
                 "-i", f"title={source}",
-                "-s", f"{w}x{h}", "-i", disp,
+                "-s", f"{w}x{h}",
             ]
     else:
         raise RuntimeError(f"Unsupported platform: {plat}")
