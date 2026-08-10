@@ -59,6 +59,7 @@ to send it. The thumbnail is always generated to decide.
 
 import argparse
 import io
+import math
 import os
 import signal
 import struct
@@ -308,6 +309,26 @@ def post_frame(endpoint: str, data: bytes, force: bool = False, source_label: st
         return {"accepted": False, "reason": f"http_error: {e}"}
 
 
+def _positive_int(value: str) -> int:
+    try:
+        parsed = int(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be an integer") from exc
+    if parsed <= 0:
+        raise argparse.ArgumentTypeError("must be greater than 0")
+    return parsed
+
+
+def _positive_finite_float(value: str) -> float:
+    try:
+        parsed = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a number") from exc
+    if not math.isfinite(parsed) or parsed <= 0:
+        raise argparse.ArgumentTypeError("must be a finite number greater than 0")
+    return parsed
+
+
 # ── main loop ──────────────────────────────────────────────────────────────
 
 
@@ -321,8 +342,8 @@ def main():
         help="Bridge /frame endpoint URL",
     )
     parser.add_argument(
-        "--interval", type=float, default=1.0,
-        help="Seconds between capture attempts (default: 1.0, max 1.0 enforced by bridge)",
+        "--interval", type=_positive_finite_float, default=1.0,
+        help="Seconds between capture attempts (default: 1.0; values below 1.0 are clamped to 1.0)",
     )
     parser.add_argument(
         "--source", default="screen",
@@ -335,10 +356,10 @@ def main():
         "--y", type=int, default=0, help="Y offset for screen capture (Linux only)",
     )
     parser.add_argument(
-        "--width", "-w", type=int, default=768, help="Capture width (Gemini-native default: 768)",
+        "--width", "-w", type=_positive_int, default=768, help="Capture width (Gemini-native default: 768)",
     )
     parser.add_argument(
-        "--height", type=int, default=768, help="Capture height (Gemini-native default: 768)",
+        "--height", type=_positive_int, default=768, help="Capture height (Gemini-native default: 768)",
     )
     parser.add_argument(
         "--force", action="store_true",
