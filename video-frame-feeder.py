@@ -51,7 +51,7 @@ New CLI flags:
                         frame, like v0.1). Useful for debugging.
   --source-label TEXT   Label passed to the bridge via ?source= and
                         included in the "video_initialized" webhook
-                        announce. Default: the value of --source.
+                        announce. No label is sent by default.
 
 The full-resolution JPEG is only generated when we're actually going
 to send it. The thumbnail is always generated to decide.
@@ -366,22 +366,22 @@ def main():
     )
     parser.add_argument(
         "--source-label", default="",
-        help="Label included in the bridge's video_initialized webhook announce "
-             "(default: the value of --source)",
+        help="Optional label included in the bridge's video_initialized webhook announce; "
+             "omitted by default",
     )
     args = parser.parse_args()
 
     interval = max(args.interval, 1.0)  # Never faster than 1fps
     full_cmd = get_ffmpeg_cmd(args.source, args.x, args.y, args.width, args.height, display=args.display)
     thumb_cmd = get_thumb_cmd(args.source, args.x, args.y, args.width, args.height, display=args.display)
-    source_label = args.source_label or args.source
+    source_label = args.source_label
     content_filter = not args.no_content_filter
 
     print(f"Feeder started — endpoint: {args.endpoint}")
     print(f"Capture: {args.source} @ {args.width}x{args.height}, {interval}s interval")
     print(f"Content filter: {'ON' if content_filter else 'OFF'} "
           f"(stddev>={args.stddev_min}, hamming>={args.min_change})")
-    print(f"Source label for webhook: {source_label}")
+    print(f"Source label for webhook: {source_label or '(none)'}")
     print(f"ffmpeg full: {' '.join(full_cmd[:8])} ...")
     print(f"ffmpeg thumb: {' '.join(thumb_cmd[:8])} ...")
 
