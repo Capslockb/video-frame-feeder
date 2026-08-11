@@ -59,6 +59,7 @@ to send it. The thumbnail is always generated to decide.
 
 import argparse
 import io
+import math
 import os
 import signal
 import struct
@@ -246,26 +247,52 @@ def hamming_distance(a: int, b: int) -> int:
     return bin(a ^ b).count("1")
 
 
+def mean_luminance_8x8(pixels: bytes) -> float:
+    """Mean grayscale luminance across 64 pixels (0-255 scale)."""
+    if len(pixels) != 64:
+        return 0.0
+    return sum(pixels) / 64.0
+
+
 def stddev_8x8(pixels: bytes) -> float:
     """Standard deviation across 64 pixels (0-255 scale)."""
     if len(pixels) != 64:
         return 0.0
-    mean = sum(pixels) / 64.0
+    mean = mean_luminance_8x8(pixels)
     var = sum((p - mean) ** 2 for p in pixels) / 64.0
     return var ** 0.5
 
 
+def frame_signature_8x8(pixels: bytes) -> Tuple[int, float]:
+    """Return the structural aHash and mean-luminance frame signature."""
+    return perceptual_hash_8x8(pixels), mean_luminance_8x8(pixels)
+
+
+def _luma_change_threshold(value: str) -> float:
+    """Argparse type for a finite mean-luminance delta in the 0-255 range."""
+    try:
+        threshold = float(value)
+    except ValueError as exc:
+        raise argparse.ArgumentTypeError("must be a number from 0 through 255") from exc
+    if not math.isfinite(threshold) or not 0.0 <= threshold <= 255.0:
+        raise argparse.ArgumentTypeError("must be finite and from 0 through 255")
+    return threshold
+
+
 def should_send(
     pixels: bytes,
-    last_hash: Optional[int],
+    last_signature: Optional[Tuple[int, float]],
     *,
     min_change: int,
+    min_luma_change: float,
     stddev_min: float,
     enabled: bool,
 ) -> Tuple[bool, str]:
     """Decide whether this frame is worth sending.
 
     Returns (send?, reason). Reason is short — used in the log line.
+    Structural aHash and mean luminance are independent change signals. A
+    zero luminance threshold disables only the luminance signal.
     """
     if not enabled:
         return True, "filter_off"
@@ -274,14 +301,26 @@ def should_send(
     if sd < stddev_min:
         return False, f"uniform(sd={sd:.1f}<{stddev_min:.1f})"
 
-    h = perceptual_hash_8x8(pixels)
-    if last_hash is None:
+    signature = frame_signature_8x8(pixels)
+    if last_signature is None:
         return True, "first_frame"
 
+    h, luminance = signature
+    last_hash, last_luminance = last_signature
     dist = hamming_distance(h, last_hash)
-    if dist < min_change:
-        return False, f"unchanged(d={dist}<{min_change})"
+    luma_delta = abs(luminance - last_luminance)
+    hash_changed = dist >= min_change
+    luma_changed = min_luma_change > 0 and luma_delta >= min_luma_change
 
+    if not hash_changed and not luma_changed:
+        return False, (
+            f"unchanged(d={dist}<{min_change}, "
+            f"luma={luma_delta:.1f}<{min_luma_change:.1f})"
+        )
+    if hash_changed and luma_changed:
+        return True, f"changed(d={dist},luma={luma_delta:.1f})"
+    if luma_changed:
+        return True, f"changed(luma={luma_delta:.1f})"
     return True, f"changed(d={dist})"
 
 
@@ -361,6 +400,13 @@ def main():
         help="Min pixel stddev (0-255) to treat a frame as real content (default: 0 = disabled)",
     )
     parser.add_argument(
+        "--min-luma-change", type=_luma_change_threshold, default=8.0,
+        help=(
+            "Mean-luminance delta (0-255) that also counts as changed "
+            "(default: 8.0; 0 disables the luminance signal)"
+        ),
+    )
+    parser.add_argument(
         "--no-content-filter", action="store_true",
         help="Send every frame regardless of content (v0.1 behavior)",
     )
@@ -380,12 +426,13 @@ def main():
     print(f"Feeder started — endpoint: {args.endpoint}")
     print(f"Capture: {args.source} @ {args.width}x{args.height}, {interval}s interval")
     print(f"Content filter: {'ON' if content_filter else 'OFF'} "
-          f"(stddev>={args.stddev_min}, hamming>={args.min_change})")
+          f"(stddev>={args.stddev_min}, hamming>={args.min_change}, "
+          f"luma-delta>={args.min_luma_change})")
     print(f"Source label for webhook: {source_label}")
     print(f"ffmpeg full: {' '.join(full_cmd[:8])} ...")
     print(f"ffmpeg thumb: {' '.join(thumb_cmd[:8])} ...")
 
-    last_hash: Optional[int] = None
+    last_signature: Optional[Tuple[int, float]] = None
     stats = {
         "captured": 0,
         "sent": 0,
@@ -422,8 +469,9 @@ def main():
             continue
 
         send, reason = should_send(
-            pixels, last_hash,
+            pixels, last_signature,
             min_change=args.min_change,
+            min_luma_change=args.min_luma_change,
             stddev_min=args.stddev_min,
             enabled=content_filter,
         )
@@ -443,9 +491,10 @@ def main():
             time.sleep(interval)
             continue
 
-        # Decision: send. Keep this hash pending until the corresponding
-        # full frame is accepted so capture or delivery failures stay retryable.
-        h = perceptual_hash_8x8(pixels)
+        # Decision: send. Keep the complete signature pending until the
+        # corresponding full frame is accepted so failures stay retryable.
+        signature = frame_signature_8x8(pixels)
+        h, luminance = signature
 
         frame = capture_full_frame(full_cmd)
         if frame is None:
@@ -458,9 +507,12 @@ def main():
 
         result = post_frame(args.endpoint, frame, force=args.force, source_label=source_label)
         if result.get("accepted"):
-            last_hash = h
+            last_signature = signature
             stats["sent"] += 1
-            print(f"✅ Sent {len(frame)}B — {reason} [hash=0x{h:016x}]")
+            print(
+                f"✅ Sent {len(frame)}B — {reason} "
+                f"[hash=0x{h:016x},luma={luminance:.1f}]"
+            )
         else:
             print(f"❌ Bridge rejected {len(frame)}B — {result.get('reason', '?')} ({reason})")
 
