@@ -308,6 +308,30 @@ def post_frame(endpoint: str, data: bytes, force: bool = False, source_label: st
         return {"accepted": False, "reason": f"http_error: {e}"}
 
 
+def startup_diagnostics(
+    endpoint: str,
+    source: str,
+    width: int,
+    height: int,
+    interval: float,
+    content_filter: bool,
+    stddev_min: float,
+    min_change: int,
+    source_label: str,
+) -> Tuple[str, ...]:
+    """Return bounded startup lines without endpoint or capture identifiers."""
+    endpoint_state = "configured" if endpoint else "missing"
+    capture_mode = "screen" if source == "screen" else "window"
+    source_label_state = "explicit" if source_label else "implicit"
+    return (
+        f"Feeder started — endpoint: {endpoint_state}",
+        f"Capture: {capture_mode} @ {width}x{height}, {interval}s interval",
+        f"Content filter: {'ON' if content_filter else 'OFF'} "
+        f"(stddev>={stddev_min}, hamming>={min_change})",
+        f"Source label for webhook: {source_label_state}",
+    )
+
+
 # ── main loop ──────────────────────────────────────────────────────────────
 
 
@@ -377,13 +401,18 @@ def main():
     source_label = args.source_label or args.source
     content_filter = not args.no_content_filter
 
-    print(f"Feeder started — endpoint: {args.endpoint}")
-    print(f"Capture: {args.source} @ {args.width}x{args.height}, {interval}s interval")
-    print(f"Content filter: {'ON' if content_filter else 'OFF'} "
-          f"(stddev>={args.stddev_min}, hamming>={args.min_change})")
-    print(f"Source label for webhook: {source_label}")
-    print(f"ffmpeg full: {' '.join(full_cmd[:8])} ...")
-    print(f"ffmpeg thumb: {' '.join(thumb_cmd[:8])} ...")
+    for line in startup_diagnostics(
+        args.endpoint,
+        args.source,
+        args.width,
+        args.height,
+        interval,
+        content_filter,
+        args.stddev_min,
+        args.min_change,
+        args.source_label,
+    ):
+        print(line)
 
     last_hash: Optional[int] = None
     stats = {
@@ -469,7 +498,8 @@ def main():
         time.sleep(interval)
 
     # Final stats line
-    print(f"\nFinal stats: {stats}")
+    print(f"\
+Final stats: {stats}")
     return 0 if stats["errors"] == 0 else 1
 
 
