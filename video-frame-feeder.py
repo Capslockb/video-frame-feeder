@@ -443,10 +443,9 @@ def main():
             time.sleep(interval)
             continue
 
-        # Decision: send. Update the hash BEFORE capture so even if capture
-        # fails we don't lose the "we saw this content" state.
+        # Decision: send. Keep this hash pending until the corresponding
+        # full frame is accepted so capture or delivery failures stay retryable.
         h = perceptual_hash_8x8(pixels)
-        last_hash = h
 
         frame = capture_full_frame(full_cmd)
         if frame is None:
@@ -459,6 +458,7 @@ def main():
 
         result = post_frame(args.endpoint, frame, force=args.force, source_label=source_label)
         if result.get("accepted"):
+            last_hash = h
             stats["sent"] += 1
             print(f"✅ Sent {len(frame)}B — {reason} [hash=0x{h:016x}]")
         else:
