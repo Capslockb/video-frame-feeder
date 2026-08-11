@@ -303,7 +303,20 @@ def post_frame(endpoint: str, data: bytes, force: bool = False, source_label: st
             timeout=5,
         )
         resp.raise_for_status()
-        return resp.json()
+        try:
+            payload = resp.json()
+        except ValueError:
+            return {"accepted": False, "reason": "bridge_response_invalid_json"}
+
+        if not isinstance(payload, dict):
+            return {"accepted": False, "reason": "bridge_response_invalid"}
+
+        accepted = payload.get("accepted")
+        if accepted is True:
+            return {"accepted": True}
+        if accepted is False:
+            return {"accepted": False, "reason": "bridge_rejected"}
+        return {"accepted": False, "reason": "bridge_response_invalid"}
     except requests.RequestException as e:
         return {"accepted": False, "reason": f"http_error: {e}"}
 
