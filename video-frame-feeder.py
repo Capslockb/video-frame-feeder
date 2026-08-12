@@ -498,8 +498,7 @@ def main():
         time.sleep(interval)
 
     # Final stats line
-    print(f"\
-Final stats: {stats}")
+    print(f"\nFinal stats: {stats}")
     return 0 if stats["errors"] == 0 else 1
 
 
